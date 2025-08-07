@@ -73,6 +73,11 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPokemonRepository, PokemonRepository>();
+builder.Services.AddScoped<ICaughtPokemonRepository, CaughtPokemonRepository>();
+
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Add controllers
 builder.Services.AddControllers();
 
