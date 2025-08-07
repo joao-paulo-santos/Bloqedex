@@ -12,9 +12,18 @@ This project follows Clean Architecture principles with clear separation of conc
 ├── Infrastructure/         # Infrastructure layer (data access, external services)
 ├── BloqedexApi/           # Presentation layer (controllers, DTOs)
 └── Testing/               # Unit tests
+```
+
 ### Design Patterns Implemented
 
+1. **Repository Pattern** - Encapsulates data access logic
+2. **Unit of Work Pattern** - Manages database transactions
+3. **Service Layer Pattern** - Contains business logic
+4. **Dependency Injection** - Promotes loose coupling
+5. **Mapper Pattern** - Maps between entities and DTOs
+
 ## Features
+
 ### Core Functionality
 
 ### Technical Features
