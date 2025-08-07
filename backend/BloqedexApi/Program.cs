@@ -73,11 +73,15 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddSingleton<Core.Interfaces.ILogger>(new SerilogLogger(Log.Logger));
+builder.Services.AddSingleton<ITokenService>(new TokenService(secretKey, issuer, audience, expireMinutes));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPokemonRepository, PokemonRepository>();
 builder.Services.AddScoped<ICaughtPokemonRepository, CaughtPokemonRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+builder.Services.AddScoped<IUserService, UserService>();
 // Add controllers
 builder.Services.AddControllers();
 

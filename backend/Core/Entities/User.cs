@@ -27,6 +27,9 @@ namespace Core.Entities
         [Column("user_role")]
         public Role Role { get; set; } = Role.User;
 
+        [Column("caught_count")]
+        public int CaughtCount { get; set; } = 0;
+
         public virtual ICollection<CaughtPokemon> CaughtPokemons { get; set; } = new List<CaughtPokemon>();
     }
 }

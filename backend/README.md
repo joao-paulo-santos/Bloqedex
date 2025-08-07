@@ -25,8 +25,12 @@ This project follows Clean Architecture principles with clear separation of conc
 ## Features
 
 ### Core Functionality
+- **User Management** - Registration, authentication, profile management
+- **Pokémon Data** - Integration with PokéAPI with local caching
 
 ### Technical Features
+- **JWT Authentication** - Secure token-based authentication
+- **SQLite Database** - Local data storage with Entity Framework Core
 
 ## 🛠️ Prerequisites
 
@@ -151,6 +155,7 @@ When running in development mode, comprehensive API documentation is available a
 ## 📋 License
 
 ## 🙏 Acknowledgments
+
 - Myself for my previous architecture study in [Bapi](https://github.com/joao-paulo-santos/bapi), in wich this backend architecture was based off
 - [PokéAPI](https://pokeapi.co/) for providing comprehensive Pokémon data
 - [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) principles by Robert C. Martin
