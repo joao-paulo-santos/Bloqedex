@@ -31,8 +31,9 @@ This project follows Clean Architecture principles with clear separation of conc
 ### Technical Features
 - **JWT Authentication** - Secure token-based authentication
 - **SQLite Database** - Local data storage with Entity Framework Core
+- **Unit Testing** - xUnit tests with Moq
 
-## 🛠️ Prerequisites
+## Prerequisites
 
 - .NET 8 SDK
 - Visual Studio 2022 or VS Code
@@ -69,6 +70,16 @@ The API uses JWT (JSON Web Tokens) for authentication:
 The backend integrates with [PokéAPI](https://pokeapi.co/) to fetch Pokémon data:
 
 ### Rate Limiting
+## Testing
+
+Run the unit tests:
+
+```bash
+dotnet test
+```
+
+The test suite includes:
+- User service tests (registration, authentication, password management)
 - Respects PokéAPI rate limits with automatic delays
 - Implements retry logic for rate limit responses
 - Caches all fetched data locally to minimize API calls
@@ -84,7 +95,7 @@ The backend integrates with [PokéAPI](https://pokeapi.co/) to fetch Pokémon da
 - Types (primary and secondary)
 - Sprites (front default and official artwork)
 
-## 📊 Logging
+## Logging
 
 The application uses Serilog for comprehensive logging:
 
@@ -132,7 +143,7 @@ When running in development mode, comprehensive API documentation is available a
 - Authentication requirements
 - Example requests
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -154,7 +165,7 @@ When running in development mode, comprehensive API documentation is available a
 
 ## 📋 License
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Myself for my previous architecture study in [Bapi](https://github.com/joao-paulo-santos/bapi), in wich this backend architecture was based off
 - [PokéAPI](https://pokeapi.co/) for providing comprehensive Pokémon data
