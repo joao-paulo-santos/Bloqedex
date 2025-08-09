@@ -15,7 +15,7 @@ This project follows Clean Architecture principles with clear separation of conc
 └── Testing/               # Unit tests
 ```
 
-<img src="readme_assets/Backend_Architecture.png" alt="Backend Architecture Diagrams" />
+<img src="./readme_assets/Backend_Architecture.png" alt="Backend Architecture Diagrams" />
 
 ### Design Patterns Implemented
 
