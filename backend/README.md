@@ -201,6 +201,8 @@ The test suite includes:
 - Smart caching and pagination optimization tests
 - Type completeness tracking tests
 
+For comprehensive test documentation including all test methods organized by category, see [Testing/Tests.md](Testing/Tests.md).
+
 ## Configuration
 
 ### JWT Settings (`appsettings.json`)
