@@ -131,5 +131,101 @@ namespace Testing.ApplicationTests
 
             Assert.False(result);
         }
+
+        [Fact]
+        public void HashPassword_EmptyPassword_ReturnsValidHash()
+        {
+            var emptyPassword = "";
+
+            var result = _userService.HashPassword(emptyPassword);
+
+            Assert.NotNull(result);
+            Assert.NotEmpty(result);
+        }
+
+        [Fact]
+        public void HashPassword_LongPassword_HandlesCorrectly()
+        {
+            var longPassword = new string('x', 1000); // 1000 character password
+
+            var result = _userService.HashPassword(longPassword);
+
+            Assert.NotNull(result);
+            Assert.True(_userService.VerifyPassword(longPassword, result));
+        }
+
+        [Fact]
+        public void HashPassword_SpecialCharacters_HandlesCorrectly()
+        {
+            var specialPassword = "p@ssw0rd!#$%^&*()";
+
+            var hash = _userService.HashPassword(specialPassword);
+            var result = _userService.VerifyPassword(specialPassword, hash);
+
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void HashPassword_SamePasswordTwice_ProducesDifferentHashes()
+        {
+            var password = "testpassword";
+
+            var hash1 = _userService.HashPassword(password);
+            var hash2 = _userService.HashPassword(password);
+
+            Assert.NotEqual(hash1, hash2); // Should be different due to salt
+            Assert.True(_userService.VerifyPassword(password, hash1));
+            Assert.True(_userService.VerifyPassword(password, hash2));
+        }
+
+        [Fact]
+        public async Task RegisterUserAsync_DuplicateUsername_ReturnsNull()
+        {
+            // Arrange
+            var existingUser = new User
+            {
+                Id = 1,
+                Username = "existinguser",
+                Email = "existing@example.com",
+                PasswordHash = "hash",
+                CaughtCount = 0
+            };
+
+            _mockUserRepository.Setup(r => r.GetUserByUsernameAsync("existinguser"))
+                .ReturnsAsync(existingUser);
+
+            // Act
+            var result = await _userService.RegisterUserAsync("existinguser", "new@example.com", "password");
+
+            // Assert
+            Assert.Null(result);
+            _mockUserRepository.Verify(r => r.AddUserAsync(It.IsAny<User>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RegisterUserAsync_DuplicateEmail_ReturnsNull()
+        {
+            // Arrange
+            var existingUser = new User
+            {
+                Id = 1,
+                Username = "existinguser",
+                Email = "existing@example.com",
+                PasswordHash = "hash",
+                CaughtCount = 0
+            };
+
+            _mockUserRepository.Setup(r => r.GetUserByUsernameAsync("newuser"))
+                .ReturnsAsync((User?)null);
+            _mockUserRepository.Setup(r => r.GetUserByEmailAsync("existing@example.com"))
+                .ReturnsAsync(existingUser);
+
+            // Act
+            var result = await _userService.RegisterUserAsync("newuser", "existing@example.com", "password");
+
+            // Assert
+            Assert.Null(result);
+            _mockUserRepository.Verify(r => r.AddUserAsync(It.IsAny<User>()), Times.Never);
+        }
     }
 }

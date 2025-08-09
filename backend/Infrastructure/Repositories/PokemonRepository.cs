@@ -28,6 +28,15 @@ namespace Infrastructure.Repositories
                 .FirstOrDefaultAsync(p => p.PokeApiId == pokeApiId);
         }
 
+        public async Task<IReadOnlyList<Pokemon>> GetPokemonByPokeApiIdRangeAsync(int startId, int endId)
+        {
+            return await _context.Pokemon
+                .Include(p => p.PokemonTypes)
+                .Where(p => p.PokeApiId >= startId && p.PokeApiId <= endId)
+                .OrderBy(p => p.PokeApiId)
+                .ToListAsync();
+        }
+
         public async Task<IReadOnlyList<Pokemon>> GetPagedListOfPokemonAsync(int pageIndex, int pageSize)
         {
             return await _context.Pokemon
@@ -60,23 +69,23 @@ namespace Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Pokemon?> AddPokemonAsync(Pokemon pokemon)
+        public Task<Pokemon?> AddPokemonAsync(Pokemon pokemon)
         {
             _context.Pokemon.Add(pokemon);
-            return pokemon;
+            return Task.FromResult<Pokemon?>(pokemon);
         }
 
-        public async Task<Pokemon?> UpdatePokemonAsync(Pokemon pokemon)
+        public Task<Pokemon?> UpdatePokemonAsync(Pokemon pokemon)
         {
             pokemon.ModifiedDate = DateTime.UtcNow;
             _context.Pokemon.Update(pokemon);
-            return pokemon;
+            return Task.FromResult<Pokemon?>(pokemon);
         }
 
-        public async Task<bool> DeletePokemonAsync(Pokemon pokemon)
+        public Task<bool> DeletePokemonAsync(Pokemon pokemon)
         {
             _context.Pokemon.Remove(pokemon);
-            return true;
+            return Task.FromResult(true);
         }
 
         public async Task<int> GetTotalPokemonCountAsync()

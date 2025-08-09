@@ -6,6 +6,7 @@ namespace Core.Interfaces
     {
         Task<Pokemon?> GetPokemonByIdAsync(int id);
         Task<Pokemon?> GetPokemonByPokeApiIdAsync(int pokeApiId);
+        Task<IReadOnlyList<Pokemon>> GetPokemonByPokeApiIdRangeAsync(int startId, int endId);
         Task<IReadOnlyList<Pokemon>> GetPagedListOfPokemonAsync(int pageIndex, int pageSize);
         Task<IReadOnlyList<Pokemon>> SearchPokemonByNameAsync(string name, int pageIndex, int pageSize);
         Task<IReadOnlyList<Pokemon>> GetPokemonByTypeAsync(string typeName, int pageIndex, int pageSize);

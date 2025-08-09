@@ -12,5 +12,6 @@ namespace Core.Interfaces
         Task<CaughtPokemon?> UpdateCaughtPokemonAsync(CaughtPokemon caughtPokemon);
         Task<bool> DeleteCaughtPokemonAsync(CaughtPokemon caughtPokemon);
         Task<int> GetUserCaughtPokemonCountAsync(int userId);
+        Task<IReadOnlyList<CaughtPokemon>> GetUserCaughtPokemonByPokemonIdsAsync(int userId, IEnumerable<int> pokemonIds);
     }
 }

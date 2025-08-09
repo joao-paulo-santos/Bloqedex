@@ -53,22 +53,22 @@ namespace Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<CaughtPokemon?> AddCaughtPokemonAsync(CaughtPokemon caughtPokemon)
+        public Task<CaughtPokemon?> AddCaughtPokemonAsync(CaughtPokemon caughtPokemon)
         {
             _context.CaughtPokemon.Add(caughtPokemon);
-            return caughtPokemon;
+            return Task.FromResult<CaughtPokemon?>(caughtPokemon);
         }
 
-        public async Task<CaughtPokemon?> UpdateCaughtPokemonAsync(CaughtPokemon caughtPokemon)
+        public Task<CaughtPokemon?> UpdateCaughtPokemonAsync(CaughtPokemon caughtPokemon)
         {
             _context.CaughtPokemon.Update(caughtPokemon);
-            return caughtPokemon;
+            return Task.FromResult<CaughtPokemon?>(caughtPokemon);
         }
 
-        public async Task<bool> DeleteCaughtPokemonAsync(CaughtPokemon caughtPokemon)
+        public Task<bool> DeleteCaughtPokemonAsync(CaughtPokemon caughtPokemon)
         {
             _context.CaughtPokemon.Remove(caughtPokemon);
-            return true;
+            return Task.FromResult(true);
         }
 
         public async Task<int> GetUserCaughtPokemonCountAsync(int userId)
@@ -76,6 +76,14 @@ namespace Infrastructure.Repositories
             return await _context.CaughtPokemon
                 .Where(cp => cp.UserId == userId)
                 .CountAsync();
+        }
+
+        public async Task<IReadOnlyList<CaughtPokemon>> GetUserCaughtPokemonByPokemonIdsAsync(int userId, IEnumerable<int> pokemonIds)
+        {
+            return await _context.CaughtPokemon
+                .Where(cp => cp.UserId == userId && pokemonIds.Contains(cp.PokemonId))
+                .Include(cp => cp.Pokemon)
+                .ToListAsync();
         }
     }
 }

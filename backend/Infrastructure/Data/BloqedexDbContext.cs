@@ -13,6 +13,8 @@ namespace Infrastructure.Data
         public DbSet<Pokemon> Pokemon { get; set; }
         public DbSet<PokemonType> PokemonTypes { get; set; }
         public DbSet<CaughtPokemon> CaughtPokemon { get; set; }
+        public DbSet<TypeSyncStatus> TypeSyncStatuses { get; set; }
+        public DbSet<SharedPokemon> SharedPokemon { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -53,6 +55,27 @@ namespace Infrastructure.Data
                 entity.HasOne(e => e.Pokemon)
                     .WithMany(e => e.CaughtByUsers)
                     .HasForeignKey(e => e.PokemonId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<TypeSyncStatus>(entity =>
+            {
+                entity.HasIndex(e => e.TypeName).IsUnique();
+            });
+
+            modelBuilder.Entity<SharedPokemon>(entity =>
+            {
+                entity.HasIndex(e => e.ShareToken).IsUnique();
+                entity.Property(e => e.ShareType).HasConversion<int>();
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.CaughtPokemon)
+                    .WithMany()
+                    .HasForeignKey(e => e.CaughtPokemonId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }

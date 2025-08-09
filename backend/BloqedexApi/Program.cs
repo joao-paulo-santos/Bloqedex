@@ -33,6 +33,7 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
+// Database configuration
 builder.Services.AddDbContext<BloqedexDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=bloqedex.db"));
 
@@ -73,15 +74,30 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Register services
 builder.Services.AddSingleton<Core.Interfaces.ILogger>(new SerilogLogger(Log.Logger));
 builder.Services.AddSingleton<ITokenService>(new TokenService(secretKey, issuer, audience, expireMinutes));
+
+// Register repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPokemonRepository, PokemonRepository>();
 builder.Services.AddScoped<ICaughtPokemonRepository, CaughtPokemonRepository>();
+builder.Services.AddScoped<ITypeSyncStatusRepository, TypeSyncStatusRepository>();
+builder.Services.AddScoped<ISharedPokemonRepository, SharedPokemonRepository>();
 
+// Register Unit of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+// Register application services
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IPokemonService, PokemonService>();
+builder.Services.AddScoped<ICaughtPokemonService, CaughtPokemonService>();
+builder.Services.AddScoped<ISharedPokemonService, SharedPokemonService>();
+
+// Register infrastructure services
+builder.Services.AddSingleton<IPokeApiRateLimiter, PokeApiRateLimiter>();
+builder.Services.AddHttpClient<IPokeApiService, PokeApiService>();
+
 // Add controllers
 builder.Services.AddControllers();
 

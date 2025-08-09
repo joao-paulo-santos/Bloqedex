@@ -42,22 +42,22 @@ namespace Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<User?> AddUserAsync(User newUser)
+        public Task<User?> AddUserAsync(User newUser)
         {
             _context.Users.Add(newUser);
-            return newUser;
+            return Task.FromResult<User?>(newUser);
         }
 
-        public async Task<User?> UpdateUserAsync(User user)
+        public Task<User?> UpdateUserAsync(User user)
         {
             _context.Users.Update(user);
-            return user;
+            return Task.FromResult<User?>(user);
         }
 
-        public async Task<bool> DeleteUserAsync(User user)
+        public Task<bool> DeleteUserAsync(User user)
         {
             _context.Users.Remove(user);
-            return true;
+            return Task.FromResult(true);
         }
     }
 }
