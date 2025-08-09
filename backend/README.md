@@ -41,8 +41,7 @@ This project follows Clean Architecture principles with clear separation of conc
 - **Comprehensive Logging** - Serilog integration
 - **API Documentation** - Swagger/OpenAPI documentation
 - **Performance Optimizations** - Smart caching, efficient queries, and optimized data access
-- **Unit Testing** - Comprehensive test suite with 35+ tests using xUnit and Moq
-- **Security Updates** - Latest JWT packages addressing known vulnerabilities
+- **Unit Testing** - Comprehensive test suite using xUnit and Moq
 
 ## Prerequisites
 
@@ -54,7 +53,7 @@ This project follows Clean Architecture principles with clear separation of conc
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/joao-paulo-santos/bloqedex
    cd backend
    ```
 
@@ -115,22 +114,12 @@ The application uses SQLite with Entity Framework Core. The database is automati
 The Bloqedex API implements several performance optimizations to provide a better user experience while minimizing external API calls:
 
 ### Smart On-Demand Caching
-Instead of requiring manual bulk synchronization, the system fetches and caches Pokémon data as needed:
 
-- **Individual Pokémon**: When searched by name, automatically fetched from PokéAPI if not present localy
+- **Local First**: automatically fetched from PokéAPI only if not present localy.
+- **Smart Pagination**: Automatically fills gaps in paginated results with minimal requests.
 - **Type-Based Searches**: Complete type data fetched once, skipping already owned, then served from cache
-- **Smart Pagination**: Automatically fills gaps in paginated results
-
-### Smart Pagination with Gap Filling
-pagination that ensures complete pages even with sparse data:
-
-```
-Example: Page 2 (Pokémon 21-40)
-Local DB: 21, 23, 25, 30, 35, 40 ✅
-Missing: 22, 24, 26-29, 31-34, 36-39 ❌
-Action: Fetch only missing Pokémon from PokéAPI
-Result: Complete page with all 20 Pokémon
-```
+- **Admin Control**: `POST /api/Pokemon/sync` for intentional bulk imports
+- **Graceful Degradation**: System works even if external API is unavailable
 
 **Benefits:**
 - No massive bulk downloads
@@ -138,18 +127,6 @@ Result: Complete page with all 20 Pokémon
 - Fast response times
 - Progressive database building
 - Complete pagination results
-
-### Type Completeness Tracking
-`TypeSyncStatus` table tracks which types are fully synchronized:
-- First type search: Fetches all missing Pokémon of that type
-- Subsequent searches: Fast local queries
-- Automatic completeness validation
-
-### Intelligent Sync Strategy
-- **No Automatic Triggers**: Manual control over bulk operations
-- **Admin Control**: `POST /api/Pokemon/sync` for intentional bulk imports
-- **Background Processing**: Type synchronization runs asynchronously
-- **Graceful Degradation**: System works even if external API is unavailable
 
 ## Authentication
 
@@ -191,15 +168,22 @@ curl -X POST http://localhost:5000/api/auth/login \
 - `GET /stats` - Get Pokémon database statistics
 
 ### Pokédex (`/api/pokedex`)
-- `GET /` - Get user's caught Pokémon
-- `GET /favorites` - Get favorite Pokémon
+- `GET /` - Get user's caught Pokémon (paginated)
+- `GET /favorites` - Get user's favorite Pokémon
 - `POST /catch` - Catch a Pokémon
 - `POST /catch/bulk` - Catch multiple Pokémon in one operation
-- `PATCH /{id}` - Update caught Pokémon (notes, favorite)
-- `DELETE /{id}` - Release Pokémon
+- `PATCH /{caughtPokemonId}` - Update caught Pokémon (notes, favorite status)
+- `DELETE /{caughtPokemonId}` - Release a specific caught Pokémon
 - `DELETE /release/bulk` - Release multiple Pokémon in one operation
-- `GET /check/{pokemonId}` - Check if Pokémon is caught
-- `GET /stats` - Get Pokédex statistics
+- `GET /check/{pokemonId}` - Check if a Pokémon is caught by the user
+- `GET /stats` - Get user's Pokédex statistics (total caught, favorites, completion percentage)
+
+### Sharing (`/api/sharing`)
+- `POST /` - Create a share for single Pokémon or collection
+- `GET /my-shares` - Get current user's shared content
+- `GET /{shareToken}` - View shared Pokémon/collection by token (public)
+- `PUT /{shareId}` - Update an existing share
+- `DELETE /{shareId}` - Delete a share
 
 ## Testing
 
@@ -242,26 +226,13 @@ The test suite includes:
 
 ## PokéAPI Integration
 
-The backend integrates with [PokéAPI](https://pokeapi.co/) through caching layer that maximizes performance while minimizing external API calls:
-
-### Smart Fetching Strategies
-
-- On-Demand Individual Fetching
-- Intelligent Type-Based Fetching
-- Smart Pagination Gap Filling
+The backend integrates with [PokéAPI](https://pokeapi.co/) through caching layer and rate limiting middleware.
 
 ### Rate Limiting & Resilience
 - Respects PokéAPI rate limits with automatic delays
 - Retry logic for rate limit responses
-- Graceful degradation when external API is unavailable
 - All fetched data is permanently cached locally
-- Background processing for non-blocking operations
-
-### Data Synchronization States
-1. **Individual Cache**: Single Pokémon cached on-demand
-2. **Type Complete**: All Pokémon of a type cached and marked complete
-3. **Bulk Sync**: Manual admin operation for mass data import
-4. **Progressive Build**: Database grows organically through user interactions
+- **Progressive Build**: Database grows organically through user interactions
 
 ### Covered Data
 - Basic Pokémon info (name, height, weight)

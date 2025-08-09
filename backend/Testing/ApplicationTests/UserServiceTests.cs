@@ -21,6 +21,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that user registration creates a new user with valid credentials and returns the created user
         public async Task RegisterUserAsync_ValidUser_ReturnsCreatedUser()
         {
             var username = "testuser";
@@ -45,6 +46,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that user registration fails and returns null when username already exists
         public async Task RegisterUserAsync_ExistingUsername_ReturnsNull()
         {
             var username = "existinguser";
@@ -66,6 +68,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that user authentication succeeds and returns user when valid credentials are provided
         public async Task AuthenticateUserAsync_ValidCredentials_ReturnsUser()
         {
             var username = "testuser";
@@ -88,6 +91,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that user authentication fails and returns null when incorrect password is provided
         public async Task AuthenticateUserAsync_InvalidPassword_ReturnsNull()
         {
             var username = "testuser";
@@ -110,6 +114,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that password verification returns true when correct password is provided
         public void VerifyPassword_CorrectPassword_ReturnsTrue()
         {
             var password = "testpassword";
@@ -121,6 +126,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that password verification returns false when incorrect password is provided
         public void VerifyPassword_IncorrectPassword_ReturnsFalse()
         {
             var password = "testpassword";
@@ -133,6 +139,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that password hashing handles edge case of empty password and produces valid hash
         public void HashPassword_EmptyPassword_ReturnsValidHash()
         {
             var emptyPassword = "";
@@ -144,6 +151,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that password hashing correctly handles very long passwords without errors
         public void HashPassword_LongPassword_HandlesCorrectly()
         {
             var longPassword = new string('x', 1000); // 1000 character password
@@ -155,6 +163,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that password hashing correctly handles special characters in passwords
         public void HashPassword_SpecialCharacters_HandlesCorrectly()
         {
             var specialPassword = "p@ssw0rd!#$%^&*()";
@@ -166,6 +175,7 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
+        // Test that password hashing uses salt to produce different hashes for the same password
         public void HashPassword_SamePasswordTwice_ProducesDifferentHashes()
         {
             var password = "testpassword";
@@ -173,15 +183,15 @@ namespace Testing.ApplicationTests
             var hash1 = _userService.HashPassword(password);
             var hash2 = _userService.HashPassword(password);
 
-            Assert.NotEqual(hash1, hash2); // Should be different due to salt
+            Assert.NotEqual(hash1, hash2); // Should be different due to salt (bcrypt saves this along with the hash)
             Assert.True(_userService.VerifyPassword(password, hash1));
             Assert.True(_userService.VerifyPassword(password, hash2));
         }
 
         [Fact]
+        // Test that user registration fails when attempting to register with duplicate username
         public async Task RegisterUserAsync_DuplicateUsername_ReturnsNull()
         {
-            // Arrange
             var existingUser = new User
             {
                 Id = 1,
@@ -194,18 +204,16 @@ namespace Testing.ApplicationTests
             _mockUserRepository.Setup(r => r.GetUserByUsernameAsync("existinguser"))
                 .ReturnsAsync(existingUser);
 
-            // Act
             var result = await _userService.RegisterUserAsync("existinguser", "new@example.com", "password");
 
-            // Assert
             Assert.Null(result);
             _mockUserRepository.Verify(r => r.AddUserAsync(It.IsAny<User>()), Times.Never);
         }
 
         [Fact]
+        // Test that user registration fails when attempting to register with duplicate email address
         public async Task RegisterUserAsync_DuplicateEmail_ReturnsNull()
         {
-            // Arrange
             var existingUser = new User
             {
                 Id = 1,
@@ -220,10 +228,8 @@ namespace Testing.ApplicationTests
             _mockUserRepository.Setup(r => r.GetUserByEmailAsync("existing@example.com"))
                 .ReturnsAsync(existingUser);
 
-            // Act
             var result = await _userService.RegisterUserAsync("newuser", "existing@example.com", "password");
 
-            // Assert
             Assert.Null(result);
             _mockUserRepository.Verify(r => r.AddUserAsync(It.IsAny<User>()), Times.Never);
         }
