@@ -1,4 +1,4 @@
-# Bloqedx Backend Test Suite
+# Bloqedex Backend Test Suite
 
 This document provides a comprehensive overview of all tests in the Bloqedex backend, organized by category and layer. Every test includes clear objectives and covers specific functionality to ensure system reliability and correctness.
 
