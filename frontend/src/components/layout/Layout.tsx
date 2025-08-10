@@ -127,7 +127,7 @@ export const Layout = ({ children }: LayoutProps) => {
 
                         {/* User Menu */}
                         <div className="flex items-center space-x-4 ml-auto">
-                            {/* Online/Offline Status Indicator */}
+                            {/* Backend Status Indicator */}
                             <div className="hidden md:flex items-center space-x-2">
                                 <StatusDotIcon size={8} online={isOnline} />
                                 <span className="text-sm text-gray-600">

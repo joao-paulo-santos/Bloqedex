@@ -30,6 +30,10 @@ export class AuthRepository implements IAuthRepository {
     logout(): void {
         authApiClient.logout();
     }
+
+    async isOnline(): Promise<boolean> {
+        return await authApiClient.isOnline();
+    }
 }
 
 export const authRepository = new AuthRepository();

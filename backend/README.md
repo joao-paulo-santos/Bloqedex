@@ -1,6 +1,6 @@
 # Bloqedex Backend API
 
-A comprehensive .NET 8 backend API for the Bloqedex Pokédex application, built following Clean Architecture principles and integrating with the PokéAPI.
+A .NET 8 backend API for the Bloqedex Pokédex application, built following Clean Architecture principles and integrating with the PokéAPI.
 
 ## Architecture
 

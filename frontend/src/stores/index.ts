@@ -6,24 +6,39 @@ export { usePokedexStore } from '../features/pokedex';
 // App Global State Store
 import { create } from 'zustand';
 import { useAuthStore } from '../features/auth';
+import { authRepository } from '../infrastructure/repositories';
+import { apiConfig } from '../config/api';
 
 interface AppGlobalState {
   isOnline: boolean;
   lastSyncTime: number;
+  lastHealthCheck: number;
   setOnlineStatus: (status: boolean) => void;
   updateLastSyncTime: () => void;
+  checkBackendHealth: () => Promise<void>;
 }
 
-export const useAppStore = create<AppGlobalState>((set) => ({
-  isOnline: navigator.onLine,
+export const useAppStore = create<AppGlobalState>((set, get) => ({
+  isOnline: false,
   lastSyncTime: 0,
+  lastHealthCheck: 0,
 
   setOnlineStatus: (status: boolean) => {
-    set({ isOnline: status });
+    set({ isOnline: status, lastHealthCheck: Date.now() });
   },
 
   updateLastSyncTime: () => {
     set({ lastSyncTime: Date.now() });
+  },
+
+  checkBackendHealth: async () => {
+    try {
+      const isHealthy = await authRepository.isOnline();
+      get().setOnlineStatus(isHealthy);
+    } catch (error) {
+      console.warn('Backend health check failed:', error);
+      get().setOnlineStatus(false);
+    }
   },
 }));
 
@@ -33,19 +48,21 @@ export const initializeStores = async () => {
   const authStore = useAuthStore.getState();
   await authStore.loadUser();
 
-  // Set up online/offline listeners
+  // Get app store instance
   const appStore = useAppStore.getState();
 
-  window.addEventListener('online', () => {
-    appStore.setOnlineStatus(true);
-  });
+  // Initial backend health check
+  await appStore.checkBackendHealth();
 
-  window.addEventListener('offline', () => {
-    appStore.setOnlineStatus(false);
-  });
+  // Set up periodic backend health checks using configured interval
+  setInterval(() => {
+    appStore.checkBackendHealth();
+  }, apiConfig.healthCheckInterval);
 
-  // Check initial online status
-  appStore.setOnlineStatus(navigator.onLine);
+  // Set up health check on window focus (when user returns to tab)
+  window.addEventListener('focus', () => {
+    appStore.checkBackendHealth();
+  });
 
   // Seed offline data for initial app functionality
   try {

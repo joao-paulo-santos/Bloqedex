@@ -292,7 +292,7 @@ export const LockIcon = ({ size = 20, className = "" }: IconProps) => (
 
 export const StatusDotIcon = ({ size = 8, className = "", online = true }: IconProps & { online?: boolean }) => (
     <div
-        className={`rounded-full ${online ? 'bg-green-500' : 'bg-orange-500'} ${className}`}
+        className={`rounded-full ${online ? 'bg-green-500' : 'bg-red-500'} ${className}`}
         style={{ width: size, height: size }}
     />
 );
