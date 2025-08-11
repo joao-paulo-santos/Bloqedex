@@ -56,7 +56,12 @@ export const Layout = ({ children }: LayoutProps) => {
 
     const handleLockedNavClick = (e: React.MouseEvent) => {
         e.preventDefault();
-        authEvents.openLogin();
+        if (isOnline) {
+            authEvents.openLogin();
+        }
+        else {
+            authEvents.openRegister();
+        }
     };
 
     const isActivePath = (path: string) => {
@@ -74,7 +79,7 @@ export const Layout = ({ children }: LayoutProps) => {
                     <div className="flex items-center h-16">
                         {/* Logo */}
                         <div className="flex items-center">
-                            <Link to="/" className="flex items-center">
+                            <Link to="/" className="flex items-center mr-5">
                                 <img
                                     src="/logo_small.png"
                                     alt="Bloqedex Logo"
@@ -90,7 +95,7 @@ export const Layout = ({ children }: LayoutProps) => {
                         </div>
 
                         {/* Desktop Navigation */}
-                        <nav className="hidden md:flex space-x-8 ml-5">
+                        <nav className="hidden md:flex  ml-5">
                             {navigation.map((item) => {
                                 const Icon = item.icon;
                                 const isLocked = item.requiresAuth && !isAuthenticated;
@@ -113,7 +118,7 @@ export const Layout = ({ children }: LayoutProps) => {
                                     <Link
                                         key={item.name}
                                         to={item.href}
-                                        className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
+                                        className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive
                                             ? 'text-blue-600'
                                             : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
                                             }`}

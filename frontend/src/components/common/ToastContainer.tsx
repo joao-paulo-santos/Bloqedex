@@ -44,7 +44,7 @@ export const ToastContainer: React.FC = () => {
     }
 
     return (
-        <div className="fixed top-4 right-4 z-50 pointer-events-none">
+        <div className="fixed top-4 right-4 z-[9999] pointer-events-none">
             <div className="flex flex-col pointer-events-auto space-y-3">
                 {toasts.map(toast => (
                     <Toast

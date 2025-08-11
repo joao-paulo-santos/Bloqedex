@@ -4,21 +4,20 @@ import { useAppStore } from '../../../stores';
 import { PokemonCard } from './PokemonCard';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import type { Pokemon } from '../../../core/entities';
+import type { PokemonFilters } from '../../../core/interfaces';
 
 interface PokemonGridProps {
-    searchTerm?: string;
-    typeFilter?: string;
+    customFilters?: Partial<PokemonFilters>;
 }
 
 export const PokemonGrid: React.FC<PokemonGridProps> = ({
-    searchTerm = '',
-    typeFilter = '',
+    customFilters = {}
 }) => {
     const [displayedPokemon, setDisplayedPokemon] = useState<Pokemon[]>([]);
 
     const {
         pokemonMap,
-        getPokemonArray,
+        getFilteredPokemon,
         isLoading,
         error,
         clearError
@@ -27,25 +26,11 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
     const isOnline = useAppStore(state => state.isOnline);
 
     useEffect(() => {
-        // Get pre-sorted Pokemon array from store
-        const pokemonArray = getPokemonArray();
-        let filtered = pokemonArray;
-
-        if (searchTerm) {
-            filtered = filtered.filter(p =>
-                p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.pokeApiId.toString().includes(searchTerm)
-            );
-        }
-
-        if (typeFilter) {
-            filtered = filtered.filter(p =>
-                p.types.some(type => type.toLowerCase() === typeFilter.toLowerCase())
-            );
-        }
-        console.log('Filtered Pokemon:', filtered.length, 'from', pokemonArray.length);
+        // Get filtered Pokemon array from store using custom filters
+        const filtered = getFilteredPokemon(customFilters);
+        console.log('Filtered Pokemon:', filtered.length);
         setDisplayedPokemon(filtered);
-    }, [pokemonMap, getPokemonArray, searchTerm, typeFilter]);
+    }, [pokemonMap, getFilteredPokemon, customFilters]);
 
     // Error state when no Pokemon and there's an error
     if (error && pokemonMap.size === 0) {
