@@ -1,10 +1,12 @@
 import type { Pokemon, CaughtPokemon, User } from '../../core/entities';
-import type { OfflineAction, CacheEntry, IOfflineStorage } from '../../core/interfaces';
+import type { OfflineAction, IOfflineStorage } from '../../core/interfaces';
+import { getLastConsecutiveIdFromIds } from '../../common/utils/pokemonHelpers';
 
 export class IndexedDBStorage implements IOfflineStorage {
     private dbName = 'BloqedexDB';
     private dbVersion = 1;
     private db: IDBDatabase | null = null;
+    private pokemonIdsCache: Set<number> | null = null;
 
     async init(): Promise<void> {
         return new Promise((resolve, reject) => {
@@ -33,11 +35,6 @@ export class IndexedDBStorage implements IOfflineStorage {
 
                 if (!db.objectStoreNames.contains('users')) {
                     db.createObjectStore('users', { keyPath: 'id' });
-                }
-
-                if (!db.objectStoreNames.contains('cache')) {
-                    const cacheStore = db.createObjectStore('cache', { keyPath: 'key' });
-                    cacheStore.createIndex('expiresAt', 'expiresAt', { unique: false });
                 }
 
                 if (!db.objectStoreNames.contains('offlineActions')) {
@@ -104,6 +101,7 @@ export class IndexedDBStorage implements IOfflineStorage {
     }
 
     async savePokemon(pokemon: Pokemon): Promise<void> {
+        console.log("saving pokemon", pokemon);
         if (!this.db) await this.init();
 
         const transaction = this.db!.transaction(['pokemon'], 'readwrite');
@@ -111,7 +109,12 @@ export class IndexedDBStorage implements IOfflineStorage {
 
         return new Promise((resolve, reject) => {
             const request = store.put(pokemon);
-            request.onsuccess = () => resolve();
+            request.onsuccess = () => {
+                if (this.pokemonIdsCache) {
+                    this.pokemonIdsCache.add(pokemon.id);
+                }
+                resolve();
+            };
             request.onerror = () => reject(request.error);
         });
     }
@@ -139,6 +142,162 @@ export class IndexedDBStorage implements IOfflineStorage {
             const request = store.getAll();
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getPokemonPage(page: number, pageSize: number): Promise<{ pokemon: Pokemon[], totalCount: number }> {
+        if (!this.db) await this.init();
+
+        const transaction = this.db!.transaction(['pokemon'], 'readonly');
+        const store = transaction.objectStore('pokemon');
+
+        return new Promise((resolve, reject) => {
+            // Get total count first
+            const countRequest = store.count();
+            countRequest.onsuccess = () => {
+                const totalCount = countRequest.result;
+
+                // Calculate range for pagination
+                const startIndex = (page - 1) * pageSize;
+
+                // Use cursor to efficiently get the page
+                const pokemon: Pokemon[] = [];
+                let currentIndex = 0;
+
+                const cursorRequest = store.openCursor();
+                cursorRequest.onsuccess = (event) => {
+                    const cursor = (event.target as IDBRequest).result;
+
+                    if (cursor) {
+                        if (currentIndex >= startIndex && pokemon.length < pageSize) {
+                            pokemon.push(cursor.value);
+                        }
+                        currentIndex++;
+
+                        if (pokemon.length < pageSize && currentIndex < totalCount) {
+                            cursor.continue();
+                        } else {
+                            resolve({ pokemon, totalCount });
+                        }
+                    } else {
+                        resolve({ pokemon, totalCount });
+                    }
+                };
+                cursorRequest.onerror = () => reject(cursorRequest.error);
+            };
+            countRequest.onerror = () => reject(countRequest.error);
+        });
+    }
+
+    async getPokemonCount(): Promise<number> {
+        if (!this.db) await this.init();
+
+        const transaction = this.db!.transaction(['pokemon'], 'readonly');
+        const store = transaction.objectStore('pokemon');
+
+        return new Promise((resolve, reject) => {
+            const request = store.count();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async hasPokemonRange(startId: number, endId: number): Promise<boolean> {
+        if (!this.db) await this.init();
+
+        const existingIds = await this.getAllPokemonIds();
+
+        // Check if we have all Pokemon in the range
+        for (let id = startId; id <= endId; id++) {
+            if (!existingIds.has(id)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    async getPokemonByIdRange(startId: number, endId: number): Promise<Pokemon[]> {
+        if (!this.db) await this.init();
+
+        const transaction = this.db!.transaction(['pokemon'], 'readonly');
+        const store = transaction.objectStore('pokemon');
+        const pokemon: Pokemon[] = [];
+
+        return new Promise((resolve, reject) => {
+            for (let id = startId; id <= endId; id++) {
+                const request = store.get(id);
+                request.onsuccess = () => {
+                    if (request.result) {
+                        pokemon.push(request.result);
+                    }
+                    if (id === endId) {
+                        // Sort by ID to maintain order
+                        pokemon.sort((a, b) => a.id - b.id);
+                        resolve(pokemon);
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            }
+        });
+    }
+
+    async getAllPokemonIds(): Promise<Set<number>> {
+        // Return cached IDs if available
+        if (this.pokemonIdsCache) {
+            return this.pokemonIdsCache;
+        }
+
+        if (!this.db) await this.init();
+
+        const transaction = this.db!.transaction(['pokemon'], 'readonly');
+        const store = transaction.objectStore('pokemon');
+
+        return new Promise((resolve, reject) => {
+            const request = store.getAllKeys();
+            request.onsuccess = () => {
+                const ids = new Set(request.result as number[]);
+                this.pokemonIdsCache = ids;
+                resolve(ids);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getLastConsecutiveId(): Promise<number> {
+        const allIds = await this.getAllPokemonIds();
+        return getLastConsecutiveIdFromIds(allIds);
+    }
+
+    async saveManyPokemon(pokemon: Pokemon[]): Promise<void> {
+        if (!this.db) await this.init();
+        const existingIds = await this.getAllPokemonIds();
+
+        const newPokemon = pokemon.filter(p => !existingIds.has(p.id));
+
+        if (newPokemon.length === 0) {
+            return;
+        }
+
+        const transaction = this.db!.transaction(['pokemon'], 'readwrite');
+        const store = transaction.objectStore('pokemon');
+
+        return new Promise((resolve, reject) => {
+            let completed = 0;
+            const total = newPokemon.length;
+
+            newPokemon.forEach(p => {
+                const request = store.put(p);
+                request.onsuccess = () => {
+                    if (this.pokemonIdsCache) {
+                        this.pokemonIdsCache.add(p.id);
+                    }
+                    completed++;
+                    if (completed === total) {
+                        resolve();
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
         });
     }
 
@@ -181,92 +340,6 @@ export class IndexedDBStorage implements IOfflineStorage {
         });
     }
 
-    async setCache<T>(key: string, data: T, ttlMs: number = 300000): Promise<void> {
-        if (!this.db) await this.init();
-
-        const entry: CacheEntry<T> & { key: string } = {
-            key,
-            data,
-            timestamp: Date.now(),
-            expiresAt: Date.now() + ttlMs,
-        };
-
-        const transaction = this.db!.transaction(['cache'], 'readwrite');
-        const store = transaction.objectStore('cache');
-
-        return new Promise((resolve, reject) => {
-            const request = store.put(entry);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async getCache<T>(key: string): Promise<T | null> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['cache'], 'readonly');
-        const store = transaction.objectStore('cache');
-
-        return new Promise((resolve, reject) => {
-            const request = store.get(key);
-            request.onsuccess = () => {
-                const result = request.result;
-                if (!result) {
-                    resolve(null);
-                    return;
-                }
-
-                // Check if cache has expired
-                if (Date.now() > result.expiresAt) {
-                    // Remove expired cache entry
-                    this.deleteCache(key);
-                    resolve(null);
-                    return;
-                }
-
-                resolve(result.data);
-            };
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async deleteCache(key: string): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['cache'], 'readwrite');
-        const store = transaction.objectStore('cache');
-
-        return new Promise((resolve, reject) => {
-            const request = store.delete(key);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async clearExpiredCache(): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['cache'], 'readwrite');
-        const store = transaction.objectStore('cache');
-        const index = store.index('expiresAt');
-
-        return new Promise((resolve, reject) => {
-            const request = index.openCursor(IDBKeyRange.upperBound(Date.now()));
-
-            request.onsuccess = (event) => {
-                const cursor = (event.target as IDBRequest).result;
-                if (cursor) {
-                    cursor.delete();
-                    cursor.continue();
-                } else {
-                    resolve();
-                }
-            };
-
-            request.onerror = () => reject(request.error);
-        });
-    }
-
     async saveUser(user: User): Promise<void> {
         if (!this.db) await this.init();
 
@@ -294,8 +367,6 @@ export class IndexedDBStorage implements IOfflineStorage {
     }
 
     async cleanupExpiredData(): Promise<void> {
-        await this.clearExpiredCache();
-
         if (!this.db) await this.init();
 
         const transaction = this.db!.transaction(['offlineActions'], 'readwrite');

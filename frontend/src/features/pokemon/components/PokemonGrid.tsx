@@ -8,7 +8,6 @@ import type { Pokemon } from '../../../core/entities';
 interface PokemonGridProps {
     searchTerm?: string;
     typeFilter?: string;
-    showAllPokemon?: boolean; // If true, fetches all Pokemon; if false, uses pagination
 }
 
 export const PokemonGrid: React.FC<PokemonGridProps> = ({
@@ -18,24 +17,19 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
     const [displayedPokemon, setDisplayedPokemon] = useState<Pokemon[]>([]);
 
     const {
-        pokemon = [],
+        pokemonMap,
+        getPokemonArray,
         isLoading,
         error,
-        fetchPokemon,
         clearError
     } = usePokemonStore();
 
     const isOnline = useAppStore(state => state.isOnline);
 
-    // Fetch Pokemon on mount
     useEffect(() => {
-        fetchPokemon();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Only run on mount
-
-    // Filter Pokemon based on search and type filters
-    useEffect(() => {
-        let filtered = pokemon;
+        // Get pre-sorted Pokemon array from store
+        const pokemonArray = getPokemonArray();
+        let filtered = pokemonArray;
 
         if (searchTerm) {
             filtered = filtered.filter(p =>
@@ -49,12 +43,12 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
                 p.types.some(type => type.toLowerCase() === typeFilter.toLowerCase())
             );
         }
-        console.log('Filtered Pokemon:', filtered.length, 'from', pokemon.length);
+        console.log('Filtered Pokemon:', filtered.length, 'from', pokemonArray.length);
         setDisplayedPokemon(filtered);
-    }, [searchTerm, typeFilter]);
+    }, [pokemonMap, getPokemonArray, searchTerm, typeFilter]);
 
     // Error state when no Pokemon and there's an error
-    if (error && pokemon.length === 0) {
+    if (error && pokemonMap.size === 0) {
         return (
             <div className="text-center py-12">
                 <div className="text-red-600 mb-4">
@@ -79,7 +73,7 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
     }
 
     // Loading state when no Pokemon
-    if (isLoading && pokemon.length === 0) {
+    if (isLoading && pokemonMap.size === 0) {
         return (
             <div className="flex justify-center items-center py-12">
                 <LoadingSpinner size="lg" />
@@ -88,7 +82,7 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
     }
 
     // No results state
-    if (!isLoading && displayedPokemon.length === 0 && pokemon.length > 0) {
+    if (!isLoading && displayedPokemon.length === 0 && pokemonMap.size > 0) {
         return (
             <div className="text-center py-12">
                 <p className="text-gray-500 text-lg">
@@ -102,7 +96,7 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
     return (
         <>
             {/* Error banner when there's cached data */}
-            {error && pokemon.length > 0 && (
+            {error && pokemonMap.size > 0 && (
                 <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
                     <div className="flex">
                         <div className="flex-shrink-0">
@@ -134,8 +128,8 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
                         'Loading Pokémon...'
                     ) : (
                         <>
-                            Showing {displayedPokemon.length} of {pokemon.length} Pokémon
-                            {!isOnline && pokemon.length > 0 && (
+                            Showing {displayedPokemon.length} of {pokemonMap.size} Pokémon
+                            {!isOnline && pokemonMap.size > 0 && (
                                 <span className="text-yellow-600"> (cached data)</span>
                             )}
                         </>
@@ -155,7 +149,7 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
             {displayedPokemon.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                     {displayedPokemon.map((pokemon) => (
-                        <div key={pokemon.id} className="relative">
+                        <div key={pokemon.pokeApiId} className="relative">
                             <PokemonCard
                                 pokemon={pokemon}
                                 className="h-full"

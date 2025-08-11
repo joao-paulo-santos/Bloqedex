@@ -6,21 +6,10 @@ import { indexedDBStorage } from '../storage/IndexedDBStorage';
 // API client for Pokedex operations (caught Pokemon management)
 export class PokedexApiClient extends BaseApiClient {
     async getCaughtPokemon(): Promise<CaughtPokemon[]> {
-        const cacheKey = 'caught_pokemon';
-
-        // Try cache first
-        const cachedData = await this.getCachedData<CaughtPokemon[]>(cacheKey);
-        if (cachedData) {
-            return cachedData;
-        }
-
         // If online, fetch from API
-        if (await this.isOnline()) {
+        if (this.isOnline()) {
             try {
                 const response = await this.client.get<CaughtPokemon[]>('/pokedex/caught');
-
-                // Cache the response
-                await this.setCachedData(cacheKey, response.data);
 
                 // Save to offline storage
                 for (const caught of response.data) {
@@ -41,15 +30,12 @@ export class PokedexApiClient extends BaseApiClient {
         const payload = { pokemonId, notes };
 
         // If online, make API call
-        if (await this.isOnline()) {
+        if (this.isOnline()) {
             try {
                 const response = await this.client.post<CaughtPokemon>('/pokedex/catch', payload);
 
                 // Save to offline storage
                 await indexedDBStorage.saveCaughtPokemon(response.data);
-
-                // Invalidate cache
-                await indexedDBStorage.deleteCache('caught_pokemon');
 
                 return response.data;
             } catch (error) {
@@ -96,9 +82,6 @@ export class PokedexApiClient extends BaseApiClient {
                 // Remove from offline storage
                 await indexedDBStorage.deleteCaughtPokemon(caughtPokemonId);
 
-                // Invalidate cache
-                await indexedDBStorage.deleteCache('caught_pokemon');
-
                 return;
             } catch (error) {
                 console.warn('Release request failed, saving for offline sync:', error);
@@ -121,21 +104,10 @@ export class PokedexApiClient extends BaseApiClient {
     }
 
     async getPokedexStats(): Promise<PokedexStats> {
-        const cacheKey = 'pokedex_stats';
-
-        // Try cache first
-        const cachedData = await this.getCachedData<PokedexStats>(cacheKey);
-        if (cachedData) {
-            return cachedData;
-        }
-
         // If online, fetch from API
-        if (await this.isOnline()) {
+        if (this.isOnline()) {
             try {
                 const response = await this.client.get<PokedexStats>('/pokedex/stats');
-
-                // Cache the response
-                await this.setCachedData(cacheKey, response.data, 60000); // 1 minute TTL
 
                 return response.data;
             } catch (error) {

@@ -1,11 +1,10 @@
 import type { Pokemon } from '../../core/entities';
-import type { IPokemonRepository, PaginatedResponse, PokemonFilters } from '../../core/interfaces';
+import type { IPokemonRepository, PaginatedResponse } from '../../core/interfaces';
 import { pokemonApiClient } from '../api/ApiIndex';
 import { indexedDBStorage } from '../storage/IndexedDBStorage';
 
 export class PokemonRepository implements IPokemonRepository {
-    async getAll(
-        _filters?: PokemonFilters,
+    async getPaginated(
         pageIndex: number = 1,
         pageSize: number = 20
     ): Promise<PaginatedResponse<Pokemon>> {

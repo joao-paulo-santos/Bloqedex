@@ -11,6 +11,9 @@ namespace Infrastructure.Services
         private readonly ILogger _logger;
         private readonly IPokeApiRateLimiter _rateLimiter;
         private readonly string _baseUrl = "https://pokeapi.co/api/v2/";
+        private static int? _cachedTotalCount = null;
+        private static DateTime? _cacheExpiry = null;
+        private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(24);
 
         public PokeApiService(HttpClient httpClient, ILogger logger, IPokeApiRateLimiter rateLimiter)
         {
@@ -71,12 +74,28 @@ namespace Infrastructure.Services
         {
             try
             {
+                if (_cachedTotalCount.HasValue && _cacheExpiry.HasValue && DateTime.UtcNow < _cacheExpiry.Value)
+                {
+                    return _cachedTotalCount.Value;
+                }
+
                 var response = await GetAsync<PokeApiResourceList>("pokemon-species?limit=1");
-                return response?.Count ?? 1025;
+                var totalCount = response?.Count ?? 1025;
+
+                _cachedTotalCount = totalCount;
+                _cacheExpiry = DateTime.UtcNow.Add(CacheDuration);
+
+                return totalCount;
             }
             catch (Exception ex)
             {
                 _logger.LogError("Error getting total Pokemon count from PokeAPI", ex);
+
+                if (_cachedTotalCount.HasValue)
+                {
+                    return _cachedTotalCount.Value;
+                }
+
                 return 1025;
             }
         }

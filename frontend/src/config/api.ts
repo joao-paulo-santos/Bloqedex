@@ -3,6 +3,9 @@ interface ApiConfig {
     timeout: number;
     healthCheckTimeout: number;
     healthCheckInterval: number;
+    defaultPageSize: number;
+    autoFetchInterval: number;
+    cacheStaleThreshold: number;
 }
 
 const getApiConfig = (): ApiConfig => {
@@ -12,6 +15,9 @@ const getApiConfig = (): ApiConfig => {
         timeout: 10000,
         healthCheckTimeout: 5000,
         healthCheckInterval: 5000,
+        defaultPageSize: 30,
+        autoFetchInterval: 1000,
+        cacheStaleThreshold: 24 * 60 * 60 * 1000,
     };
 
     // Override with environment variables if available
@@ -20,6 +26,9 @@ const getApiConfig = (): ApiConfig => {
         timeout: Number(import.meta.env.VITE_API_TIMEOUT) || defaultConfig.timeout,
         healthCheckTimeout: Number(import.meta.env.VITE_API_HEALTH_TIMEOUT) || defaultConfig.healthCheckTimeout,
         healthCheckInterval: Number(import.meta.env.VITE_API_HEALTH_INTERVAL) || defaultConfig.healthCheckInterval,
+        defaultPageSize: Number(import.meta.env.VITE_API_DEFAULT_PAGE_SIZE) || defaultConfig.defaultPageSize,
+        autoFetchInterval: Number(import.meta.env.VITE_API_AUTO_FETCH_INTERVAL) || defaultConfig.autoFetchInterval,
+        cacheStaleThreshold: Number(import.meta.env.VITE_CACHE_STALE_THRESHOLD) || defaultConfig.cacheStaleThreshold,
     };
 };
 

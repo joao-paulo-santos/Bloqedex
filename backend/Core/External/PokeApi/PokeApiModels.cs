@@ -29,6 +29,7 @@ namespace Core.External.PokeApi
 
     public class PokeApiStat
     {
+        [JsonProperty("base_stat")]
         public int BaseStat { get; set; }
         public PokeApiStatInfo Stat { get; set; } = new();
     }

@@ -1,5 +1,5 @@
 import type { Pokemon } from '../entities';
-import type { IPokemonRepository, PokemonFilters, PaginatedResponse } from '../interfaces';
+import type { IPokemonRepository, PaginatedResponse } from '../interfaces';
 
 export class PokemonUseCases {
     private pokemonRepo: IPokemonRepository;
@@ -8,12 +8,17 @@ export class PokemonUseCases {
         this.pokemonRepo = pokemonRepo;
     }
 
-    async getAllPokemon(
-        filters?: PokemonFilters,
-        pageIndex = 0,
-        pageSize = 20
+    async getAllPokemon(): Promise<Pokemon[]> {
+        // Get all Pokemon without pagination
+        const result = await this.pokemonRepo.getPaginated();
+        return result.pokemon;
+    }
+
+    async getPaginated(
+        pageIndex: number = 0,
+        pageSize: number = 50,
     ): Promise<PaginatedResponse<Pokemon>> {
-        return this.pokemonRepo.getAll(filters, pageIndex, pageSize);
+        return this.pokemonRepo.getPaginated(pageIndex, pageSize);
     }
 
     async getPokemonById(id: number): Promise<Pokemon | null> {

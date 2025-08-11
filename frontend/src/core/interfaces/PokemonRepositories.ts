@@ -1,8 +1,7 @@
 import type { Pokemon, CaughtPokemon, PokedexStats } from '../entities';
-import type { PokemonFilters } from './PokemonFilters';
 
 export interface PaginatedResponse<T> {
-    items: T[];
+    pokemon: T[];
     page: number;
     pageSize: number;
     totalCount: number;
@@ -10,7 +9,7 @@ export interface PaginatedResponse<T> {
 }
 
 export interface IPokemonRepository {
-    getAll(filters?: PokemonFilters, pageIndex?: number, pageSize?: number): Promise<PaginatedResponse<Pokemon>>;
+    getPaginated(pageIndex?: number, pageSize?: number): Promise<PaginatedResponse<Pokemon>>;
     getById(id: number): Promise<Pokemon | null>;
     search(name: string): Promise<Pokemon[]>;
     savePokemon(pokemon: Pokemon): Promise<void>;

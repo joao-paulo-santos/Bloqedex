@@ -19,36 +19,36 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
     className = ''
 }) => {
     // Debug: Log the entire pokemon object
-    console.log('PokemonCard received pokemon:', pokemon);
-    console.log('Pokemon name:', pokemon?.name);
-    console.log('Pokemon types:', pokemon?.types);
+    //console.log('PokemonCard received pokemon:', pokemon);
+    //console.log('Pokemon name:', pokemon?.name);
+    //console.log('Pokemon attack:', pokemon?.attack);
 
     const getTypeColor = (typeName: string): string => {
         if (!typeName) {
-            return 'bg-gray-400'; // Default color for undefined types
+            return 'bg-gray-500'; // Default color for undefined types
         }
 
         const typeColors: Record<string, string> = {
-            normal: 'bg-type-normal',
-            fighting: 'bg-type-fighting',
-            flying: 'bg-type-flying',
-            poison: 'bg-type-poison',
-            ground: 'bg-type-ground',
-            rock: 'bg-type-rock',
-            bug: 'bg-type-bug',
-            ghost: 'bg-type-ghost',
-            steel: 'bg-type-steel',
-            fire: 'bg-type-fire',
-            water: 'bg-type-water',
-            grass: 'bg-type-grass',
-            electric: 'bg-type-electric',
-            psychic: 'bg-type-psychic',
-            ice: 'bg-type-ice',
-            dragon: 'bg-type-dragon',
-            dark: 'bg-type-dark',
-            fairy: 'bg-type-fairy',
+            normal: 'bg-gray-400',
+            fighting: 'bg-red-600',
+            flying: 'bg-indigo-400',
+            poison: 'bg-purple-600',
+            ground: 'bg-yellow-600',
+            rock: 'bg-yellow-800',
+            bug: 'bg-green-500',
+            ghost: 'bg-purple-800',
+            steel: 'bg-gray-600',
+            fire: 'bg-orange-500',
+            water: 'bg-blue-500',
+            grass: 'bg-green-600',
+            electric: 'bg-yellow-400',
+            psychic: 'bg-pink-500',
+            ice: 'bg-cyan-400',
+            dragon: 'bg-indigo-700',
+            dark: 'bg-gray-800',
+            fairy: 'bg-pink-400',
         };
-        return typeColors[typeName.toLowerCase()] || 'bg-gray-400';
+        return typeColors[typeName.toLowerCase()] || 'bg-gray-500';
     };
 
     const formatName = (name: string): string => {
@@ -101,10 +101,10 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                     {formatName(pokemon.name)}
                 </h3>
 
+
                 {/* Types */}
                 <div className="flex flex-wrap gap-1 mb-3">
                     {pokemon.types?.map((type) => {
-                        console.log('Rendering type:', type);
                         return (
                             <span
                                 key={type}
@@ -116,16 +116,6 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                     }) || (
                             <span className="text-gray-500 text-sm">No type data</span>
                         )}
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-4">
-                    <div>
-                        <span className="font-medium">Height:</span> {formatHeight(pokemon.height)}
-                    </div>
-                    <div>
-                        <span className="font-medium">Weight:</span> {formatWeight(pokemon.weight)}
-                    </div>
                 </div>
 
                 {/* Action Buttons */}

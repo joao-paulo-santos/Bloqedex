@@ -6,6 +6,7 @@ export { usePokedexStore } from '../features/pokedex';
 // App Global State Store
 import { create } from 'zustand';
 import { useAuthStore } from '../features/auth';
+import { usePokemonStore } from '../features/pokemon';
 import { authRepository } from '../infrastructure/repositories';
 import { apiConfig } from '../config/api';
 
@@ -35,18 +36,34 @@ export const useAppStore = create<AppGlobalState>((set, get) => ({
     try {
       const isHealthy = await authRepository.isOnline();
       get().setOnlineStatus(isHealthy);
-    } catch (error) {
-      console.warn('Backend health check failed:', error);
+      const currentStatus = get().isOnline;
+      if (currentStatus !== isHealthy) {
+        console.log(`Backend ${isHealthy ? 'connected' : 'disconnected'}`);
+      }
+    } catch {
       get().setOnlineStatus(false);
     }
   },
 }));
 
 // Initialize function
+let isInitialized = false;
+let fillCacheRunning = false;
+
 export const initializeStores = async () => {
+  if (isInitialized) {
+    return;
+  }
+
+  isInitialized = true;
+
   // Load authentication state
   const authStore = useAuthStore.getState();
   await authStore.loadUser();
+
+  // Initialize Pokemon store with cached data
+  const pokemonStore = usePokemonStore.getState();
+  await pokemonStore.initialize();
 
   // Get app store instance
   const appStore = useAppStore.getState();
@@ -59,8 +76,40 @@ export const initializeStores = async () => {
     appStore.checkBackendHealth();
   }, apiConfig.healthCheckInterval);
 
+  // Set up periodic pokemon fetch
+  /*
+  const pokemonFetchInterval = setInterval(() => {
+    const currentAppState = useAppStore.getState();
+    const currentPokemonStore = usePokemonStore.getState();
+
+    if (currentAppState.isOnline && !currentPokemonStore.isLoading && !currentPokemonStore.hasAllPokemon()) {
+      currentPokemonStore.fillCache();
+    } else if (currentPokemonStore.hasAllPokemon()) {
+      clearInterval(pokemonFetchInterval);
+    }
+  }, apiConfig.autoFetchInterval);
+
+*/
+  setInterval(() => {
+    fillCacheFunc(false);
+  }, apiConfig.autoFetchInterval);
+
   // Set up health check on window focus (when user returns to tab)
   window.addEventListener('focus', () => {
     appStore.checkBackendHealth();
   });
 };
+
+function fillCacheFunc(chain: boolean) {
+  if (fillCacheRunning && !chain) return;
+  fillCacheRunning = true;
+
+  const pokemonStore = usePokemonStore.getState();
+  const appStore = useAppStore.getState();
+
+  if (appStore.isOnline && !pokemonStore.isLoading && !pokemonStore.hasAllPokemon()) {
+    pokemonStore.fillCache().then(() => fillCacheFunc(true));
+  } else {
+    fillCacheRunning = false;
+  }
+}

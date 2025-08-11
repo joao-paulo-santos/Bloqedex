@@ -92,7 +92,6 @@ export const HomePage: React.FC = () => {
             <PokemonGrid
                 searchTerm={searchTerm}
                 typeFilter={typeFilter}
-                showAllPokemon={true}
             />
 
             {/* Call to Action */}

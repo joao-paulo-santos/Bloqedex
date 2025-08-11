@@ -15,7 +15,7 @@ export class PokedexRepository implements IPokedexRepository {
         const items = allCaught.slice(startIndex, endIndex);
 
         return {
-            items,
+            pokemon: items,
             page: pageIndex,
             pageSize,
             totalCount: allCaught.length,

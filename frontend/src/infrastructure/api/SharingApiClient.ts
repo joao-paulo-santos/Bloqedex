@@ -11,19 +11,7 @@ export class SharingApiClient extends BaseApiClient {
     }
 
     async getSharedPokedex(shareToken: string): Promise<SharedPokemon> {
-        const cacheKey = `shared_${shareToken}`;
-
-        // Try cache first (shorter TTL for shared content)
-        const cachedData = await this.getCachedData<SharedPokemon>(cacheKey);
-        if (cachedData) {
-            return cachedData;
-        }
-
         const response = await this.client.get<SharedPokemon>(`/sharing/${shareToken}`);
-
-        // Cache for 5 minutes
-        await this.setCachedData(cacheKey, response.data, 300000);
-
         return response.data;
     }
 

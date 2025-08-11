@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from 'axios';
-import { indexedDBStorage } from '../storage/IndexedDBStorage';
 import { apiConfig } from '../../config/api';
+import { useAppStore } from '../../stores';
 
 export class BaseApiClient {
     protected client: AxiosInstance;
@@ -38,25 +38,30 @@ export class BaseApiClient {
         );
     }
 
-    // Network status check
-    async isOnline(): Promise<boolean> {
+    // Network status check - uses cached status from app store
+    isOnline(): boolean {
+        if (!navigator.onLine) return false;
+
+        const appStore = useAppStore.getState();
+        return appStore.isOnline;
+    }
+
+    // Health check method for the background service only
+    async checkHealth(): Promise<boolean> {
         if (!navigator.onLine) return false;
 
         try {
-            await this.client.get('/health', { timeout: apiConfig.healthCheckTimeout });
-            return true;
+            const healthClient = axios.create({
+                baseURL: apiConfig.baseUrl,
+                timeout: apiConfig.healthCheckTimeout,
+                validateStatus: () => true,
+            });
+
+            const response = await healthClient.get('/health');
+            return response.status >= 200 && response.status < 300;
         } catch {
             return false;
         }
-    }
-
-    // Cache helpers
-    protected async getCachedData<T>(key: string): Promise<T | null> {
-        return await indexedDBStorage.getCache<T>(key);
-    }
-
-    protected async setCachedData<T>(key: string, data: T, ttl: number = 300000): Promise<void> {
-        await indexedDBStorage.setCache(key, data, ttl);
     }
 
     protected clearAuth(): void {

@@ -32,7 +32,7 @@ export class AuthRepository implements IAuthRepository {
     }
 
     async isOnline(): Promise<boolean> {
-        return await authApiClient.isOnline();
+        return await authApiClient.checkHealth();
     }
 }
 

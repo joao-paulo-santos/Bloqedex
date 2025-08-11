@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore, useAppStore } from '../../stores';
-import { LoginDialog, RegisterDialog } from '../../features/auth';
+import { LoginDialog, RegisterDialog, FloatingAuthButton } from '../../features/auth';
 import { eventBus, authEvents } from '../../common/utils/eventBus';
 import {
     MenuIcon,
@@ -289,6 +289,9 @@ export const Layout = ({ children }: LayoutProps) => {
                     setShowLoginDialog(true);
                 }}
             />
+
+            {/* Floating Auth Button (only show if not authenticated) */}
+            {!isAuthenticated && <FloatingAuthButton />}
         </div>
     );
 };

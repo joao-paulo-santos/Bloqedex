@@ -1,5 +1,3 @@
-export type { CacheEntry } from './CommonTypes';
-
 export type { PokemonFilters } from './PokemonFilters';
 
 export type { IPokemonRepository, IPokedexRepository, PaginatedResponse } from './PokemonRepositories';

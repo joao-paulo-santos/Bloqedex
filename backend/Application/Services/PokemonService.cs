@@ -176,7 +176,7 @@ namespace Application.Services
 
         public async Task<int> GetTotalPokemonCountAsync()
         {
-            return await _unitOfWork.PokemonRepository.GetTotalPokemonCountAsync();
+            return await _pokeApiService.GetTotalPokemonCountAsync();
         }
 
         public async Task SyncPokemonFromPokeApiAsync(int maxCount = 0)
