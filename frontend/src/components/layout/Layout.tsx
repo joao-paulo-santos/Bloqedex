@@ -167,14 +167,12 @@ export const Layout = ({ children }: LayoutProps) => {
                             ) : (
                                 /* Login Button for Non-authenticated Users */
                                 <button
-                                    onClick={authEvents.openLogin}
+                                    onClick={isOnline ? authEvents.openLogin : authEvents.openRegister}
                                     className="hidden md:flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
                                 >
-                                    Login
+                                    {isOnline ? 'Login' : 'Create offline account'}
                                 </button>
-                            )}
-
-                            {/* Mobile menu button */}
+                            )}                            {/* Mobile menu button */}
                             <button
                                 className="md:hidden p-2 text-gray-700 hover:text-blue-600"
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -252,13 +250,17 @@ export const Layout = ({ children }: LayoutProps) => {
                                 ) : (
                                     <button
                                         onClick={() => {
-                                            authEvents.openLogin();
+                                            if (isOnline) {
+                                                authEvents.openLogin();
+                                            } else {
+                                                authEvents.openRegister();
+                                            }
                                             setIsMobileMenuOpen(false);
                                         }}
                                         className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 transition-colors"
                                     >
                                         <UserIcon size={20} className="mr-3" />
-                                        Login
+                                        {isOnline ? 'Login' : 'Create offline account'}
                                     </button>
                                 )}
                             </div>
