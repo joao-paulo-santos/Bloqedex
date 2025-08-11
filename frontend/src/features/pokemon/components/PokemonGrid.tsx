@@ -8,10 +8,14 @@ import type { PokemonFilters } from '../../../core/interfaces';
 
 interface PokemonGridProps {
     customFilters?: Partial<PokemonFilters>;
+    selectedPokemonIds?: Set<number>;
+    onPokemonSelect?: (pokemonId: number) => void;
 }
 
 export const PokemonGrid: React.FC<PokemonGridProps> = ({
-    customFilters = {}
+    customFilters = {},
+    selectedPokemonIds = new Set(),
+    onPokemonSelect
 }) => {
     const [displayedPokemon, setDisplayedPokemon] = useState<Pokemon[]>([]);
 
@@ -132,25 +136,16 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
 
             {/* Pokemon grid */}
             {displayedPokemon.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                     {displayedPokemon.map((pokemon) => (
-                        <div key={pokemon.pokeApiId} className="relative">
-                            <PokemonCard
-                                pokemon={pokemon}
-                                className="h-full"
-                            />
-                            {/* Overlay for login prompt */}
-                            <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 hover:opacity-100">
-                                <div className="bg-white rounded-lg p-4 shadow-lg text-center">
-                                    <p className="text-sm text-gray-600">
-                                        Want to track this Pokémon?
-                                    </p>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Use the floating button to register!
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        <PokemonCard
+                            key={pokemon.pokeApiId}
+                            pokemon={pokemon}
+                            className="h-full"
+                            sortBy={customFilters.sortBy}
+                            isSelected={selectedPokemonIds.has(pokemon.pokeApiId)}
+                            onSelect={onPokemonSelect ? () => onPokemonSelect(pokemon.pokeApiId) : undefined}
+                        />
                     ))}
                 </div>
             )}

@@ -85,7 +85,7 @@ export const Layout = ({ children }: LayoutProps) => {
                                     alt="Bloqedex Logo"
                                     className="w-8 h-8 object-contain"
                                 />
-                                <span className="ml-1 text-xl font-bold text-gray-900">Bloqedex</span>
+                                <span className="ml-1 text-xl font-bold text-gray-900">Bloqédex</span>
                             </Link>
                             <div className="flex items-center space-x-2 ml-4 md:hidden">
                                 <div title={isOnline ? 'Online' : 'Offline'}>
