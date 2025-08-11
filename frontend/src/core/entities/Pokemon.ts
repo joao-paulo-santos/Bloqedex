@@ -4,21 +4,24 @@ export interface Pokemon {
     name: string;
     height: number;
     weight: number;
-    baseExperience: number;
+    baseExperience?: number;
     imageUrl?: string;
+    spriteUrl?: string;
     officialArtworkUrl?: string;
     stats: PokemonStat[];
-    types: PokemonType[];
+    types: string[];
     isCaught?: boolean;
     caughtAt?: string;
+    hp?: number;
+    attack?: number;
+    defense?: number;
+    specialAttack?: number;
+    specialDefense?: number;
+    speed?: number;
+    firstAddedToPokedex?: string;
 }
 
 export interface PokemonStat {
     name: string;
     baseStat: number;
-}
-
-export interface PokemonType {
-    name: string;
-    slot: number;
 }

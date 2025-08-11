@@ -4,6 +4,15 @@ import type { PokemonFilters } from '../../../core/interfaces';
 import { PokemonUseCases } from '../../../core/usecases';
 import { pokemonRepository } from '../../../infrastructure/repositories';
 
+// Actual API response format
+interface ApiPokemonResponse {
+    pokemon: Pokemon[];
+    pageIndex: number;
+    pageSize: number;
+    totalCount: number;
+    hasNextPage: boolean;
+}
+
 interface PokemonState {
     pokemon: Pokemon[];
     isLoading: boolean;
@@ -16,7 +25,7 @@ interface PokemonState {
         totalCount: number;
     };
 
-    fetchPokemon: () => Promise<void>;
+    fetchPokemon: (fetchAll?: boolean) => Promise<void>;
     searchPokemon: (name: string) => Promise<void>;
     setFilters: (filters: PokemonFilters) => void;
     setPage: (page: number) => void;
@@ -41,7 +50,10 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
     },
 
     fetchPokemon: async () => {
-        const { filters, pagination } = get();
+        const state = get();
+
+
+        const { filters, pagination } = state;
         set({ isLoading: true, error: null });
 
         try {
@@ -51,17 +63,29 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
                 pagination.pageSize
             );
 
+            console.log('Pokemon fetched:', result);
+
+            // Handle the actual API response format - convert via unknown to avoid type error
+            const apiResponse = result as unknown as ApiPokemonResponse;
+            const pokemonArray = apiResponse.pokemon;
+            const currentPage = apiResponse.pageIndex + 1; // Convert 0-based to 1-based
+            const totalPages = Math.ceil(apiResponse.totalCount / apiResponse.pageSize);
+
+            console.log('Pokemon array:', pokemonArray);
+            console.log('Current page:', currentPage, 'Total pages:', totalPages);
+
             set({
-                pokemon: result.items,
+                pokemon: pokemonArray,
                 pagination: {
-                    currentPage: result.page,
-                    totalPages: result.totalPages,
-                    pageSize: result.pageSize,
-                    totalCount: result.totalCount
+                    currentPage,
+                    totalPages,
+                    pageSize: apiResponse.pageSize,
+                    totalCount: apiResponse.totalCount
                 },
                 isLoading: false
             });
         } catch (error) {
+            console.error('Error fetching Pokemon:', error);
             set({
                 error: error instanceof Error ? error.message : 'Failed to fetch Pokemon',
                 isLoading: false

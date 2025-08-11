@@ -8,7 +8,7 @@ interface ApiConfig {
 const getApiConfig = (): ApiConfig => {
     // Default to development values
     const defaultConfig: ApiConfig = {
-        baseUrl: 'http://localhost:5000/',
+        baseUrl: 'http://localhost:5000/api/',
         timeout: 10000,
         healthCheckTimeout: 5000,
         healthCheckInterval: 5000,

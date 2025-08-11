@@ -173,7 +173,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Add a health check endpoint
-app.MapGet("/health", () => "Bloqedex API is running!");
+app.MapGet("/api/health", () => "Bloqedex API is running!");
 
 Log.Information("Starting Bloqedex API");
 

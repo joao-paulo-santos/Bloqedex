@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+
 namespace Core.External.PokeApi
 {
     public class PokeApiResourceList
@@ -49,17 +51,20 @@ namespace Core.External.PokeApi
 
     public class PokeApiSprites
     {
+        [JsonProperty("front_default")]
         public string? FrontDefault { get; set; }
         public PokeApiOther? Other { get; set; }
     }
 
     public class PokeApiOther
     {
+        [JsonProperty("official-artwork")]
         public PokeApiOfficialArtwork? OfficialArtwork { get; set; }
     }
 
     public class PokeApiOfficialArtwork
     {
+        [JsonProperty("front_default")]
         public string? FrontDefault { get; set; }
     }
 

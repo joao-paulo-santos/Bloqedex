@@ -63,12 +63,4 @@ export const initializeStores = async () => {
   window.addEventListener('focus', () => {
     appStore.checkBackendHealth();
   });
-
-  // Seed offline data for initial app functionality
-  try {
-    const { seedOfflineData } = await import('../common/utils/offlineSeeder');
-    await seedOfflineData();
-  } catch (error) {
-    console.warn('Failed to seed offline data:', error);
-  }
 };

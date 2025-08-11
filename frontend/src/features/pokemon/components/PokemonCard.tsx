@@ -18,7 +18,16 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
     showReleaseButton = false,
     className = ''
 }) => {
+    // Debug: Log the entire pokemon object
+    console.log('PokemonCard received pokemon:', pokemon);
+    console.log('Pokemon name:', pokemon?.name);
+    console.log('Pokemon types:', pokemon?.types);
+
     const getTypeColor = (typeName: string): string => {
+        if (!typeName) {
+            return 'bg-gray-400'; // Default color for undefined types
+        }
+
         const typeColors: Record<string, string> = {
             normal: 'bg-type-normal',
             fighting: 'bg-type-fighting',
@@ -58,9 +67,9 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
         <div className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden ${className}`}>
             {/* Pokemon Image */}
             <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-                {pokemon.officialArtworkUrl || pokemon.imageUrl ? (
+                {pokemon.officialArtworkUrl || pokemon.spriteUrl || pokemon.imageUrl ? (
                     <img
-                        src={pokemon.officialArtworkUrl || pokemon.imageUrl}
+                        src={pokemon.officialArtworkUrl || pokemon.spriteUrl || pokemon.imageUrl}
                         alt={pokemon.name}
                         className="w-full h-full object-contain"
                         loading="lazy"
@@ -94,14 +103,19 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
 
                 {/* Types */}
                 <div className="flex flex-wrap gap-1 mb-3">
-                    {pokemon.types.map((type) => (
-                        <span
-                            key={type.name}
-                            className={`${getTypeColor(type.name)} text-white text-xs px-2 py-1 rounded-full font-medium`}
-                        >
-                            {formatName(type.name)}
-                        </span>
-                    ))}
+                    {pokemon.types?.map((type) => {
+                        console.log('Rendering type:', type);
+                        return (
+                            <span
+                                key={type}
+                                className={`${getTypeColor(type)} text-white text-xs px-2 py-1 rounded-full font-medium`}
+                            >
+                                {formatName(type)}
+                            </span>
+                        );
+                    }) || (
+                            <span className="text-gray-500 text-sm">No type data</span>
+                        )}
                 </div>
 
                 {/* Stats */}
@@ -113,13 +127,6 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                         <span className="font-medium">Weight:</span> {formatWeight(pokemon.weight)}
                     </div>
                 </div>
-
-                {/* Base Experience */}
-                {pokemon.baseExperience && (
-                    <div className="text-sm text-gray-600 mb-4">
-                        <span className="font-medium">Base XP:</span> {pokemon.baseExperience}
-                    </div>
-                )}
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">

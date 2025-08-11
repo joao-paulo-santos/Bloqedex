@@ -1,0 +1,180 @@
+import React, { useEffect, useState } from 'react';
+import { usePokemonStore } from '../stores/pokemonStore';
+import { useAppStore } from '../../../stores';
+import { PokemonCard } from './PokemonCard';
+import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
+import type { Pokemon } from '../../../core/entities';
+
+interface PokemonGridProps {
+    searchTerm?: string;
+    typeFilter?: string;
+    showAllPokemon?: boolean; // If true, fetches all Pokemon; if false, uses pagination
+}
+
+export const PokemonGrid: React.FC<PokemonGridProps> = ({
+    searchTerm = '',
+    typeFilter = '',
+}) => {
+    const [displayedPokemon, setDisplayedPokemon] = useState<Pokemon[]>([]);
+
+    const {
+        pokemon = [],
+        isLoading,
+        error,
+        fetchPokemon,
+        clearError
+    } = usePokemonStore();
+
+    const isOnline = useAppStore(state => state.isOnline);
+
+    // Fetch Pokemon on mount
+    useEffect(() => {
+        fetchPokemon();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run on mount
+
+    // Filter Pokemon based on search and type filters
+    useEffect(() => {
+        let filtered = pokemon;
+
+        if (searchTerm) {
+            filtered = filtered.filter(p =>
+                p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                p.pokeApiId.toString().includes(searchTerm)
+            );
+        }
+
+        if (typeFilter) {
+            filtered = filtered.filter(p =>
+                p.types.some(type => type.toLowerCase() === typeFilter.toLowerCase())
+            );
+        }
+        console.log('Filtered Pokemon:', filtered.length, 'from', pokemon.length);
+        setDisplayedPokemon(filtered);
+    }, [searchTerm, typeFilter]);
+
+    // Error state when no Pokemon and there's an error
+    if (error && pokemon.length === 0) {
+        return (
+            <div className="text-center py-12">
+                <div className="text-red-600 mb-4">
+                    <p className="text-lg font-medium">
+                        {!isOnline ? 'No Pokémon Data Available Offline' : 'Error Loading Pokémon'}
+                    </p>
+                    <p className="text-sm mt-2">
+                        {!isOnline
+                            ? 'Connect to the internet and refresh to load Pokémon data for offline viewing.'
+                            : error
+                        }
+                    </p>
+                </div>
+                <button
+                    onClick={clearError}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 font-medium"
+                >
+                    Try Again
+                </button>
+            </div>
+        );
+    }
+
+    // Loading state when no Pokemon
+    if (isLoading && pokemon.length === 0) {
+        return (
+            <div className="flex justify-center items-center py-12">
+                <LoadingSpinner size="lg" />
+            </div>
+        );
+    }
+
+    // No results state
+    if (!isLoading && displayedPokemon.length === 0 && pokemon.length > 0) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-gray-500 text-lg">
+                    No Pokémon found matching your criteria.
+                </p>
+            </div>
+        );
+    }
+
+    // Pokemon grid
+    return (
+        <>
+            {/* Error banner when there's cached data */}
+            {error && pokemon.length > 0 && (
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-yellow-700">
+                                <strong>Limited connectivity:</strong> Showing cached data. Some information may be outdated.
+                            </p>
+                        </div>
+                        <div className="ml-auto pl-3">
+                            <button
+                                onClick={clearError}
+                                className="text-yellow-700 hover:text-yellow-800 text-sm font-medium"
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Results count */}
+            <div className="flex justify-between items-center text-sm text-gray-600 mb-6">
+                <div>
+                    {isLoading ? (
+                        'Loading Pokémon...'
+                    ) : (
+                        <>
+                            Showing {displayedPokemon.length} of {pokemon.length} Pokémon
+                            {!isOnline && pokemon.length > 0 && (
+                                <span className="text-yellow-600"> (cached data)</span>
+                            )}
+                        </>
+                    )}
+                </div>
+                {!isOnline && (
+                    <div className="flex items-center text-yellow-600">
+                        <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                        </svg>
+                        Offline Mode
+                    </div>
+                )}
+            </div>
+
+            {/* Pokemon grid */}
+            {displayedPokemon.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                    {displayedPokemon.map((pokemon) => (
+                        <div key={pokemon.id} className="relative">
+                            <PokemonCard
+                                pokemon={pokemon}
+                                className="h-full"
+                            />
+                            {/* Overlay for login prompt */}
+                            <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 hover:opacity-100">
+                                <div className="bg-white rounded-lg p-4 shadow-lg text-center">
+                                    <p className="text-sm text-gray-600">
+                                        Want to track this Pokémon?
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Use the floating button to register!
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </>
+    );
+};

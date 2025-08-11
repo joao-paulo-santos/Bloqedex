@@ -20,9 +20,12 @@ export const PokemonList: React.FC = () => {
 
     const { catchPokemon } = usePokedexStore();
 
+    // Fetch when component mounts or when filters/pagination change
     useEffect(() => {
-        fetchPokemon();
-    }, [fetchPokemon, filters, pagination.currentPage]);
+        console.log('PokemonList: fetching paginated Pokemon');
+        fetchPokemon(false); // Use pagination for the list component
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filters, pagination.currentPage]); // React to filter and page changes only
 
     const handleCatchPokemon = async (pokemonId: number) => {
         try {
