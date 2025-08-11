@@ -9,6 +9,7 @@ import { useAuthStore } from '../features/auth';
 import { usePokemonStore } from '../features/pokemon';
 import { authRepository } from '../infrastructure/repositories';
 import { apiConfig } from '../config/api';
+import { toastEvents } from '../common/utils/eventBus';
 
 interface AppGlobalState {
   isOnline: boolean;
@@ -34,14 +35,23 @@ export const useAppStore = create<AppGlobalState>((set, get) => ({
 
   checkBackendHealth: async () => {
     try {
+      const oldStatus = get().isOnline;
       const isHealthy = await authRepository.isOnline();
       get().setOnlineStatus(isHealthy);
-      const currentStatus = get().isOnline;
-      if (currentStatus !== isHealthy) {
-        console.log(`Backend ${isHealthy ? 'connected' : 'disconnected'}`);
+
+      if (oldStatus !== isHealthy) {
+        if (isHealthy) {
+          toastEvents.showSuccess('Connected');
+        } else {
+          toastEvents.showWarning('Connection lost');
+        }
       }
     } catch {
+      const oldStatus = get().isOnline;
       get().setOnlineStatus(false);
+      if (oldStatus !== false) {
+        toastEvents.showWarning('Connection lost');
+      }
     }
   },
 }));

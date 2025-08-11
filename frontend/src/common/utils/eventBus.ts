@@ -11,11 +11,18 @@ type EventMap = {
     'auth:openRegister': void;
     'auth:closeDialogs': void;
 
-    // Future event examples (when you need them):
+    // Toast Events
+    'toast:show': {
+        message: string;
+        type: 'success' | 'error' | 'warning' | 'info';
+        duration?: number;
+    };
+    'toast:dismiss': { id: string };
+
+    // Future event examples 
     // 'pokemon:caught': { pokemonId: number; pokemonName: string };
     // 'notification:show': { message: string; type: 'success' | 'error' | 'info' };
     // 'modal:open': { modalId: string; data?: any };
-    // 'toast:show': { title: string; description?: string; duration?: number };
     // 'search:focus': void;
     // 'theme:toggle': void;
 };
@@ -60,4 +67,16 @@ export const authEvents = {
     openLogin: () => eventBus.emitVoid('auth:openLogin'),
     openRegister: () => eventBus.emitVoid('auth:openRegister'),
     closeDialogs: () => eventBus.emitVoid('auth:closeDialogs'),
+};
+
+export const toastEvents = {
+    showSuccess: (message: string, duration?: number) =>
+        eventBus.emit('toast:show', { message, type: 'success', duration }),
+    showError: (message: string, duration?: number) =>
+        eventBus.emit('toast:show', { message, type: 'error', duration }),
+    showWarning: (message: string, duration?: number) =>
+        eventBus.emit('toast:show', { message, type: 'warning', duration }),
+    showInfo: (message: string, duration?: number) =>
+        eventBus.emit('toast:show', { message, type: 'info', duration }),
+    dismiss: (id: string) => eventBus.emit('toast:dismiss', { id }),
 };

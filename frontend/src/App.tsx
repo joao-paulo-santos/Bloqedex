@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { initializeStores, useAuthStore, useAppStore } from './stores';
 import { Layout } from './components/layout/Layout';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
+import { ToastContainer } from './components/common/ToastContainer';
 
 // Feature imports
 import { HomePage, PokedexPage, SharePage, ProfilePage } from './features';
@@ -26,6 +27,9 @@ function App() {
       <div className="min-h-screen bg-gray-50">
         {/* Offline indicator */}
         {!isOnline && <OfflineIndicator />}
+
+        {/* Toast notifications */}
+        <ToastContainer />
 
         <Routes>
           {/* Public home page - browse all Pokemon (no auth required) */}
