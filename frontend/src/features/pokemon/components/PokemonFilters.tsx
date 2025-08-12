@@ -47,9 +47,9 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
     return (
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
             {/* Basic Filters Row */}
-            <div className="flex flex-col lg:flex-row gap-4 mb-4">
+            <div className="flex flex-wrap gap-4 mb-4">
                 {/* Search Input */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-48">
                     <div className="relative">
                         <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <input
@@ -63,7 +63,7 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
                 </div>
 
                 {/* Type Filter */}
-                <div className="w-full lg:w-48">
+                <div className="w-32">
                     <div className="relative">
                         <FilterIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <select
@@ -84,7 +84,7 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
                 </div>
 
                 {/* Sort By */}
-                <div className="w-full lg:w-48">
+                <div className="w-56">
                     <select
                         value={filters.sortBy || 'pokeApiId'}
                         onChange={(e) => onFiltersChange({
@@ -101,7 +101,7 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
                 </div>
 
                 {/* Sort Order */}
-                <div className="w-full lg:w-32">
+                <div className="w-20">
                     <select
                         value={filters.sortOrder || 'asc'}
                         onChange={(e) => onFiltersChange({
@@ -113,43 +113,39 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
                         <option value="desc">↓ Desc</option>
                     </select>
                 </div>
-            </div>
 
-            {/* User Filters Row */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <div className="flex flex-wrap gap-4">
-                    <label className="flex items-center">
-                        <input
-                            type="checkbox"
-                            checked={filters.caughtOnly || false}
-                            onChange={(e) => onFiltersChange({
-                                caughtOnly: e.target.checked || undefined,
-                                uncaughtOnly: undefined // Clear opposite filter
-                            })}
-                            className="mr-2"
-                        />
-                        <span className="text-sm text-gray-700">Caught Only</span>
-                    </label>
-                    <label className="flex items-center">
-                        <input
-                            type="checkbox"
-                            checked={filters.uncaughtOnly || false}
-                            onChange={(e) => onFiltersChange({
-                                uncaughtOnly: e.target.checked || undefined,
-                                caughtOnly: undefined // Clear opposite filter
-                            })}
-                            className="mr-2"
-                        />
-                        <span className="text-sm text-gray-700">Uncaught Only</span>
-                    </label>
-                </div>
+                <label className="flex items-center whitespace-nowrap">
+                    <input
+                        type="checkbox"
+                        checked={filters.caughtOnly || false}
+                        onChange={(e) => onFiltersChange({
+                            caughtOnly: e.target.checked || undefined,
+                            uncaughtOnly: undefined // Clear opposite filter
+                        })}
+                        className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Caught Only</span>
+                </label>
+
+                <label className="flex items-center whitespace-nowrap">
+                    <input
+                        type="checkbox"
+                        checked={filters.uncaughtOnly || false}
+                        onChange={(e) => onFiltersChange({
+                            uncaughtOnly: e.target.checked || undefined,
+                            caughtOnly: undefined // Clear opposite filter
+                        })}
+                        className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Uncaught Only</span>
+                </label>
 
                 {/* Clear Filters */}
                 {hasActiveFilters() && (
                     <button
                         type="button"
                         onClick={onClearFilters}
-                        className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50 whitespace-nowrap"
                     >
                         Clear All
                     </button>

@@ -3,6 +3,7 @@ import { usePokemonStore } from '../stores/pokemonStore';
 import { useAppStore } from '../../../stores';
 import { PokemonCard } from './PokemonCard';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
+import { EmptyPokemonState } from './EmptyPokemonState';
 import type { Pokemon } from '../../../core/entities';
 import type { PokemonFilters } from '../../../core/interfaces';
 
@@ -70,14 +71,10 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
         );
     }
 
-    // No results state
-    if (!isLoading && displayedPokemon.length === 0 && pokemonMap.size > 0) {
+    // Empty state - when no Pokemon to display
+    if (!isLoading && displayedPokemon.length === 0) {
         return (
-            <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">
-                    No Pokémon found matching your criteria.
-                </p>
-            </div>
+            <EmptyPokemonState />
         );
     }
 

@@ -2,6 +2,7 @@ import type { CaughtPokemon, PokedexStats } from '../../core/entities';
 import type { IPokedexRepository, PaginatedResponse } from '../../core/interfaces';
 import { pokedexApiClient } from '../api/ApiIndex';
 import { indexedDBStorage } from '../storage/IndexedDBStorage';
+import { getCurrentUserId } from '../../common/utils/userContext';
 
 export class PokedexRepository implements IPokedexRepository {
     async getCaughtPokemon(
@@ -51,7 +52,8 @@ export class PokedexRepository implements IPokedexRepository {
         caughtPokemonId: number,
         updates: { notes?: string; isFavorite?: boolean; nickname?: string }
     ): Promise<CaughtPokemon | null> {
-        const allCaught = await indexedDBStorage.getCaughtPokemon();
+        const currentUserId = getCurrentUserId();
+        const allCaught = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
         const pokemon = allCaught.find(p => p.id === caughtPokemonId);
 
         if (!pokemon) return null;

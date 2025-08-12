@@ -2,9 +2,17 @@ import type { Pokemon, CaughtPokemon, User } from '../../core/entities';
 import type { OfflineAction, IOfflineStorage } from '../../core/interfaces';
 import { getLastConsecutiveIdFromIds } from '../../common/utils/pokemonHelpers';
 
+interface PendingAccount {
+    id: string;
+    username: string;
+    email: string;
+    createdAt: number;
+    syncAttempts: number;
+}
+
 export class IndexedDBStorage implements IOfflineStorage {
     private dbName = 'BloqedexDB';
-    private dbVersion = 1;
+    private dbVersion = 2;
     private db: IDBDatabase | null = null;
     private pokemonIdsCache: Set<number> | null = null;
 
@@ -31,6 +39,16 @@ export class IndexedDBStorage implements IOfflineStorage {
                     const caughtStore = db.createObjectStore('caughtPokemon', { keyPath: 'id' });
                     caughtStore.createIndex('pokemonId', 'pokemonId', { unique: false });
                     caughtStore.createIndex('caughtAt', 'caughtAt', { unique: false });
+                    caughtStore.createIndex('userId', 'userId', { unique: false });
+                } else {
+                    // Add userId index to existing store if it doesn't exist
+                    const transaction = (event.target as IDBOpenDBRequest).transaction;
+                    if (transaction) {
+                        const caughtStore = transaction.objectStore('caughtPokemon');
+                        if (!caughtStore.indexNames.contains('userId')) {
+                            caughtStore.createIndex('userId', 'userId', { unique: false });
+                        }
+                    }
                 }
 
                 if (!db.objectStoreNames.contains('users')) {
@@ -41,6 +59,12 @@ export class IndexedDBStorage implements IOfflineStorage {
                     const actionsStore = db.createObjectStore('offlineActions', { keyPath: 'id' });
                     actionsStore.createIndex('timestamp', 'timestamp', { unique: false });
                     actionsStore.createIndex('status', 'status', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains('pendingAccounts')) {
+                    const pendingAccountsStore = db.createObjectStore('pendingAccounts', { keyPath: 'id' });
+                    pendingAccountsStore.createIndex('email', 'email', { unique: true });
+                    pendingAccountsStore.createIndex('createdAt', 'createdAt', { unique: false });
                 }
             };
         });
@@ -314,16 +338,20 @@ export class IndexedDBStorage implements IOfflineStorage {
         });
     }
 
-    async getCaughtPokemon(): Promise<CaughtPokemon[]> {
+    async getCaughtPokemon(userId?: number | string): Promise<CaughtPokemon[]> {
         if (!this.db) await this.init();
 
         const transaction = this.db!.transaction(['caughtPokemon'], 'readonly');
         const store = transaction.objectStore('caughtPokemon');
 
         return new Promise((resolve, reject) => {
-            const request = store.getAll();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            if (userId) {
+                // Filter by userId using the index
+                const index = store.index('userId');
+                const request = index.getAll(userId);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            }
         });
     }
 
@@ -391,6 +419,58 @@ export class IndexedDBStorage implements IOfflineStorage {
                 }
             };
 
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async storePendingAccount(account: PendingAccount): Promise<void> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['pendingAccounts'], 'readwrite');
+            const store = transaction.objectStore('pendingAccounts');
+            const request = store.add(account);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getPendingAccounts(): Promise<PendingAccount[]> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['pendingAccounts'], 'readonly');
+            const store = transaction.objectStore('pendingAccounts');
+            const request = store.getAll();
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async removePendingAccount(accountId: string): Promise<void> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['pendingAccounts'], 'readwrite');
+            const store = transaction.objectStore('pendingAccounts');
+            const request = store.delete(accountId);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async clearPendingAccounts(): Promise<void> {
+        if (!this.db) await this.init();
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['pendingAccounts'], 'readwrite');
+            const store = transaction.objectStore('pendingAccounts');
+            const request = store.clear();
+
+            request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
         });
     }

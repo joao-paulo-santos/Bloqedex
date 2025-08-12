@@ -2,10 +2,13 @@ import type { CaughtPokemon, PokedexStats } from '../../core/entities';
 import type { OfflineAction } from '../../core/interfaces';
 import { BaseApiClient } from './BaseApiClient';
 import { indexedDBStorage } from '../storage/IndexedDBStorage';
+import { getCurrentUserId } from '../../common/utils/userContext';
 
 // API client for Pokedex operations (caught Pokemon management)
 export class PokedexApiClient extends BaseApiClient {
     async getCaughtPokemon(): Promise<CaughtPokemon[]> {
+        const currentUserId = getCurrentUserId();
+        
         // If online, fetch from API
         if (this.isOnline()) {
             try {
@@ -22,8 +25,8 @@ export class PokedexApiClient extends BaseApiClient {
             }
         }
 
-        // Fallback to offline data
-        return await indexedDBStorage.getCaughtPokemon();
+        // Fallback to offline data, filtered by current user
+        return await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
     }
 
     async catchPokemon(pokemonId: number, notes?: string): Promise<CaughtPokemon> {
@@ -57,10 +60,16 @@ export class PokedexApiClient extends BaseApiClient {
         // Create optimistic caught pokemon entry
         const pokemon = await indexedDBStorage.getPokemon(pokemonId);
         if (pokemon) {
+            const currentUserId = getCurrentUserId();
+            if (!currentUserId) {
+                throw new Error('No authenticated user found');
+            }
+
             const caughtPokemon: CaughtPokemon = {
                 id: Date.now(), // Temporary ID
                 pokemonId,
                 pokemon,
+                userId: currentUserId,
                 caughtAt: new Date().toISOString(),
                 notes,
                 isFavorite: false
@@ -116,7 +125,8 @@ export class PokedexApiClient extends BaseApiClient {
         }
 
         // Calculate from offline data
-        const caughtPokemon = await indexedDBStorage.getCaughtPokemon();
+        const currentUserId = getCurrentUserId();
+        const caughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
         const allPokemon = await indexedDBStorage.getAllPokemon();
 
         const totalCaught = caughtPokemon.length;

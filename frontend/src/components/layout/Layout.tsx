@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore, useAppStore } from '../../stores';
-import { LoginDialog, RegisterDialog, FloatingAuthButton } from '../../features/auth';
+import { LoginDialog, RegisterDialog, FloatingAuthButton, SwitchToOnlineButton, OfflineAccountWarning } from '../../features/auth';
 import { eventBus, authEvents } from '../../common/utils/eventBus';
 import {
     MenuIcon,
@@ -21,8 +21,10 @@ export const Layout = ({ children }: LayoutProps) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showLoginDialog, setShowLoginDialog] = useState(false);
     const [showRegisterDialog, setShowRegisterDialog] = useState(false);
+    const [showOfflineWarning, setShowOfflineWarning] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const location = useLocation();
-    const { user, logout, isAuthenticated } = useAuthStore();
+    const { user, logout, isAuthenticated, isOfflineAccount, syncPendingAccounts, getPendingAccountsCount } = useAuthStore();
     const { isOnline } = useAppStore();
 
     // Listen for auth dialog events
@@ -71,11 +73,24 @@ export const Layout = ({ children }: LayoutProps) => {
         return location.pathname.startsWith(path);
     };
 
+    const handleLogout = () => {
+        if (isOfflineAccount) {
+            setShowOfflineWarning(true);
+        } else {
+            logout();
+        }
+    };
+
+    const handleConfirmLogout = () => {
+        setShowOfflineWarning(false);
+        logout();
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <header className="bg-white shadow-sm border-b border-gray-200">
-                <div className="w-full pl-2 pr-4 sm:pl-4 sm:pr-6 lg:pl-4 lg:pr-8">
+            <header className="sticky top-0 z-50 bg-white shadow-sm border-b border-gray-200">
+                <div className="w-full pl-2 pr-2 sm:pl-4 sm:pr-3 lg:pl-4 lg:pr-4">
                     <div className="flex items-center h-16">
                         {/* Logo */}
                         <div className="flex items-center">
@@ -87,7 +102,7 @@ export const Layout = ({ children }: LayoutProps) => {
                                 />
                                 <span className="ml-1 text-xl font-bold text-gray-900">Bloqédex</span>
                             </Link>
-                            <div className="flex items-center space-x-2 ml-4 md:hidden">
+                            <div className="flex items-center md:hidden">
                                 <div title={isOnline ? 'Online' : 'Offline'}>
                                     <StatusDotIcon size={8} online={isOnline} />
                                 </div>
@@ -131,9 +146,9 @@ export const Layout = ({ children }: LayoutProps) => {
                         </nav>
 
                         {/* User Menu */}
-                        <div className="flex items-center space-x-4 ml-auto">
+                        <div className="flex items-center ml-auto">
                             {/* Backend Status Indicator */}
-                            <div className="hidden md:flex items-center space-x-2">
+                            <div className="hidden md:flex items-center space-x-2 mr-4">
                                 <StatusDotIcon size={8} online={isOnline} />
                                 <span className="text-sm text-gray-600">
                                     {isOnline ? 'Online' : 'Offline'}
@@ -146,7 +161,14 @@ export const Layout = ({ children }: LayoutProps) => {
                                 <div className="relative group">
                                     <button className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
                                         <UserIcon size={20} className="mr-2" />
-                                        <span className="hidden sm:block">{user?.username}</span>
+                                        <div className="hidden sm:flex items-center">
+                                            <span>{user?.username}</span>
+                                            {isOfflineAccount && (
+                                                <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                                                    Offline
+                                                </span>
+                                            )}
+                                        </div>
                                     </button>
 
                                     {/* Dropdown menu */}
@@ -160,7 +182,7 @@ export const Layout = ({ children }: LayoutProps) => {
                                                 Profile
                                             </Link>
                                             <button
-                                                onClick={logout}
+                                                onClick={handleLogout}
                                                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                             >
                                                 <LogOutIcon size={16} className="mr-3" />
@@ -243,7 +265,7 @@ export const Layout = ({ children }: LayoutProps) => {
                                         </Link>
                                         <button
                                             onClick={() => {
-                                                logout();
+                                                handleLogout();
                                                 setIsMobileMenuOpen(false);
                                             }}
                                             className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 transition-colors"
@@ -274,8 +296,8 @@ export const Layout = ({ children }: LayoutProps) => {
                 )}
             </header>
 
-            {/* Main content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Main content*/}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8">
                 {children}
             </main>
 
@@ -297,8 +319,19 @@ export const Layout = ({ children }: LayoutProps) => {
                 }}
             />
 
+            {/* Offline Account Warning Dialog */}
+            <OfflineAccountWarning
+                isOpen={showOfflineWarning}
+                onClose={() => setShowOfflineWarning(false)}
+                onConfirmLogout={handleConfirmLogout}
+                username={user?.username || ''}
+            />
+
             {/* Floating Auth Button (only show if not authenticated) */}
             {!isAuthenticated && <FloatingAuthButton />}
+
+            {/* Switch to Online Button (only show if offline account is active) */}
+            <SwitchToOnlineButton />
         </div>
     );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { EmptyPokemonState } from './EmptyPokemonState';
 import type { Pokemon } from '../../../core/entities';
 import type { PokemonFilters } from '../../../core/interfaces';
 
@@ -52,6 +53,13 @@ export const PokemonTable: React.FC<PokemonTableProps> = ({
             onSort(column);
         }
     };
+
+    // Handle empty state
+    if (pokemon.length === 0) {
+        return (
+            <EmptyPokemonState />
+        );
+    }
 
     const SortableHeader: React.FC<{ column: PokemonFilters['sortBy']; children: React.ReactNode }> = ({ column, children }) => (
         <th
@@ -187,8 +195,8 @@ export const PokemonTable: React.FC<PokemonTableProps> = ({
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap">
                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${p.isCaught
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-gray-100 text-gray-800'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-gray-100 text-gray-800'
                                         }`}>
                                         {p.isCaught ? 'Caught' : 'Not Caught'}
                                     </span>

@@ -4,6 +4,7 @@ export interface CaughtPokemon {
     id: number;
     pokemonId: number;
     pokemon: Pokemon;
+    userId: number | string;
     caughtAt: string;
     notes?: string;
     isFavorite: boolean;

@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useAppStore } from '../../../stores';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePokemonStore } from '../stores/pokemonStore';
 import { useAuthStore } from '../../auth/stores/authStore';
 import { PokemonGrid } from '../components/PokemonGrid';
@@ -16,8 +15,10 @@ export const HomePage: React.FC = () => {
     });
     const [selectedPokemonIds, setSelectedPokemonIds] = useState<Set<number>>(new Set());
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
+    const [showBackToTop, setShowBackToTop] = useState(false);
+    const stickyControlsRef = useRef<HTMLDivElement>(null);
 
-    const isOnline = useAppStore(state => state.isOnline);
+    //const isOnline = useAppStore(state => state.isOnline);
     const { setFilters: setStoreFilters, getFilteredPokemon } = usePokemonStore();
     const { isAuthenticated } = useAuthStore();
 
@@ -112,6 +113,24 @@ export const HomePage: React.FC = () => {
         document.body.removeChild(link);
     };
 
+    // Track scroll position to show/hide back to top button
+    useEffect(() => {
+        const handleScroll = () => {
+            if (stickyControlsRef.current) {
+                const rect = stickyControlsRef.current.getBoundingClientRect();
+                // Show back to top button when sticky controls are stuck (top position equals navbar height)
+                setShowBackToTop(rect.top <= 64); // 64px is the navbar height (h-16)
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     return (
         <>
             {/* Hero Section */}
@@ -132,52 +151,70 @@ export const HomePage: React.FC = () => {
                 onClearFilters={handleClearFilters}
             />
 
-            {/* View Mode Controls */}
-            <div className="mb-6 flex justify-between items-center">
-                <div className="flex bg-gray-100 rounded-lg p-1">
-                    <button
-                        onClick={() => setViewMode('grid')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        Grid View
-                    </button>
-                    <button
-                        onClick={() => setViewMode('table')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'table'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        Table View
-                    </button>
-                </div>
-
-                <div className="flex gap-3">
-                    {selectedPokemonIds.size > 0 && (
+            {/* View Mode Controls*/}
+            <div
+                ref={stickyControlsRef}
+                className="sticky top-16 z-40 py-4 mb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+            >
+                <div className="flex justify-between items-center">
+                    <div className="flex bg-gray-100 rounded-lg p-1">
                         <button
-                            onClick={handleBulkCatch}
-                            disabled={!isAuthenticated}
-                            className={`px-6 py-2 rounded-lg font-medium transition-colors ${isAuthenticated
-                                ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            onClick={() => setViewMode('grid')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
                                 }`}
                         >
-                            Catch ({selectedPokemonIds.size})
+                            Grid View
                         </button>
-                    )}
+                        <button
+                            onClick={() => setViewMode('table')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'table'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Table View
+                        </button>
+                    </div>
 
-                    <button
-                        onClick={handleExportCSV}
-                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
-                    >
-                        {selectedPokemonIds.size > 0
-                            ? `Export Selection (${selectedPokemonIds.size})`
-                            : 'Export CSV'
-                        }
-                    </button>
+                    <div className="flex gap-3">
+                        {selectedPokemonIds.size > 0 && (
+                            <button
+                                onClick={handleBulkCatch}
+                                disabled={!isAuthenticated}
+                                className={`px-6 py-2 rounded-lg font-medium transition-colors ${isAuthenticated
+                                    ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    }`}
+                            >
+                                Catch ({selectedPokemonIds.size})
+                            </button>
+                        )}
+
+                        <button
+                            onClick={handleExportCSV}
+                            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                        >
+                            {selectedPokemonIds.size > 0
+                                ? `Export Selection (${selectedPokemonIds.size})`
+                                : 'Export CSV'
+                            }
+                        </button>
+
+                        {showBackToTop && (
+                            <button
+                                onClick={scrollToTop}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"
+                                title="Back to top"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                                </svg>
+                                Top
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -197,24 +234,6 @@ export const HomePage: React.FC = () => {
                     onSort={(sortBy) => handleFiltersChange({ sortBy })}
                 />
             )}
-
-            {/* Call to Action */}
-            <div className="mt-12 bg-blue-50 rounded-lg p-8 text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                    Ready to Start Your Journey?
-                </h3>
-                <p className="text-gray-600">
-                    Register to track your caught Pokémon, add personal notes, and build your own Pokédex collection.
-                    {!isOnline && (
-                        <span className="block mt-2 text-yellow-700">
-                            <strong>Note:</strong> Registration requires an internet connection.
-                        </span>
-                    )}
-                </p>
-                <p className="text-sm text-gray-500 mt-4">
-                    Register or login to track your Pokemon collection!
-                </p>
-            </div>
         </>
     );
 };

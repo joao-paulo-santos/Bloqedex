@@ -18,7 +18,7 @@ export const RegisterDialog: React.FC<RegisterDialogProps> = ({ isOpen, onClose,
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const { register } = useAuthStore();
+    const { register, registerOffline, isOfflineAccount } = useAuthStore();
     const { isOnline } = useAppStore();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -41,12 +41,10 @@ export const RegisterDialog: React.FC<RegisterDialogProps> = ({ isOpen, onClose,
         setIsLoading(true);
 
         try {
-            // Pass appropriate parameters based on online status
             if (isOnline) {
                 await register(username, email, password);
             } else {
-                // For offline accounts, only pass username
-                await register(username, '', '');
+                await registerOffline(username, email);
             }
             onClose();
             // Reset form
@@ -76,7 +74,12 @@ export const RegisterDialog: React.FC<RegisterDialogProps> = ({ isOpen, onClose,
                         {/* Header */}
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-lg font-medium text-gray-900">
-                                {isOnline ? 'Create Your Account' : 'Create Offline Account'}
+                                {isOfflineAccount && isOnline
+                                    ? 'Switch to Online Account'
+                                    : isOnline
+                                        ? 'Create Your Account'
+                                        : 'Create Offline Account'
+                                }
                             </h3>
                             <button
                                 onClick={onClose}
@@ -94,9 +97,15 @@ export const RegisterDialog: React.FC<RegisterDialogProps> = ({ isOpen, onClose,
                                 </div>
                             )}
 
+                            {isOfflineAccount && isOnline && (
+                                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+                                    <p><strong>Switch to Permanent Account:</strong> Create an online account with email and password to make your progress permanent. Your current Pokédex data will be preserved!</p>
+                                </div>
+                            )}
+
                             {!isOnline && (
                                 <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md text-sm">
-                                    <p><strong>Creating offline account:</strong> You can start using the app immediately. When you go online later, you'll be able to add email/password and sync your data.</p>
+                                    <p><strong>Offline Account:</strong> You can start using the app immediately with just a username. Your progress will be saved locally and you can close/reopen the app anytime. When you go online, you'll see a "Switch to online account" button to create a permanent account.</p>
                                 </div>
                             )}
 
@@ -166,7 +175,7 @@ export const RegisterDialog: React.FC<RegisterDialogProps> = ({ isOpen, onClose,
                             )}
 
                             <div className="flex items-center justify-between pt-4">
-                                {isOnline && (
+                                {isOnline && !(isOfflineAccount && isOnline) && (
                                     <button
                                         type="button"
                                         onClick={onSwitchToLogin}
@@ -179,16 +188,16 @@ export const RegisterDialog: React.FC<RegisterDialogProps> = ({ isOpen, onClose,
 
                                 <button
                                     type="submit"
-                                    className={`bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center ${!isOnline ? 'ml-auto' : ''}`}
+                                    className={`bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center ${!isOnline || (isOfflineAccount && isOnline) ? 'ml-auto' : ''}`}
                                     disabled={isLoading}
                                 >
                                     {isLoading ? (
                                         <>
                                             <LoadingSpinner size="sm" className="mr-2" />
-                                            Creating account...
+                                            {isOfflineAccount && isOnline ? 'Switching to online...' : 'Creating account...'}
                                         </>
                                     ) : (
-                                        'Create Account'
+                                        isOfflineAccount && isOnline ? 'Switch to Online Account' : 'Create Account'
                                     )}
                                 </button>
                             </div>
