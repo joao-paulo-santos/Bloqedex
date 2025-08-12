@@ -1,4 +1,4 @@
-# Bloqedx Frontend
+# Bloqedex Frontend
 
 A modern, offline-first React frontend for the Bloqedx Pokédex application, built with TypeScript, Vite, and Tailwind CSS following advanced architectural patterns.
 
