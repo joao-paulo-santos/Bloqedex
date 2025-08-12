@@ -10,7 +10,7 @@ import { usePokemonStore } from '../features/pokemon';
 import { authRepository } from '../infrastructure/repositories';
 import { apiConfig } from '../config/api';
 import { toastEvents } from '../common/utils/eventBus';
-import { syncManager } from '../infrastructure/api/SyncManager';
+import { syncManager } from '../infrastructure/datasources/DataSourceIndex';
 
 interface AppGlobalState {
   isOnline: boolean;

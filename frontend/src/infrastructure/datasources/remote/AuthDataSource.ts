@@ -1,10 +1,9 @@
-import type { AuthResponse, LoginRequest, RegisterRequest } from '../../core/interfaces';
-import type { User } from '../../core/entities';
-import { BaseApiClient } from './BaseApiClient';
-import { indexedDBStorage } from '../storage/IndexedDBStorage';
+import type { AuthResponse, LoginRequest, RegisterRequest, User } from '../../../core/types';
+import { BaseDataSource } from './BaseDataSource';
+import { indexedDBStorage } from '../../storage/IndexedDBStorage';
 
-// API client for authentication operations
-export class AuthApiClient extends BaseApiClient {
+// Data source for authentication operations
+export class AuthDataSource extends BaseDataSource {
 
     private decodeJWT(token: string): { nameid?: string; unique_name?: string; role?: string; exp?: number;[key: string]: unknown } | null {
         try {
@@ -130,4 +129,4 @@ export class AuthApiClient extends BaseApiClient {
 }
 
 // Export singleton instance
-export const authApiClient = new AuthApiClient();
+export const authDataSource = new AuthDataSource();

@@ -1,10 +1,9 @@
-import type { Pokemon } from '../../core/entities';
-import type { PaginatedResponse } from '../../core/interfaces';
-import { BaseApiClient } from './BaseApiClient';
-import { indexedDBStorage } from '../storage/IndexedDBStorage';
+import type { Pokemon, PaginatedResponse } from '../../../core/types';
+import { BaseDataSource } from './BaseDataSource';
+import { indexedDBStorage } from '../../storage/IndexedDBStorage';
 
-// API client for Pokemon data operations
-export class PokemonApiClient extends BaseApiClient {
+// Data source for Pokemon data operations
+export class PokemonDataSource extends BaseDataSource {
     async getPokemonList(page: number = 0, pageSize: number = 20): Promise<PaginatedResponse<Pokemon>> {
         // Calculate the Pokemon ID range that would be on this page
         // Assuming Pokemon IDs are sequential starting from 1
@@ -110,4 +109,4 @@ export class PokemonApiClient extends BaseApiClient {
 }
 
 // Export singleton instance
-export const pokemonApiClient = new PokemonApiClient();
+export const pokemonDataSource = new PokemonDataSource();

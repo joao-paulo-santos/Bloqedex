@@ -1,6 +1,5 @@
-import type { CaughtPokemon, PokedexStats } from '../../core/entities';
-import type { IPokedexRepository, PaginatedResponse } from '../../core/interfaces';
-import { pokedexApiClient } from '../api/ApiIndex';
+import type { CaughtPokemon, PokedexStats, IPokedexRepository, PaginatedResponse } from '../../core/types';
+import { pokedexDataSource } from '../datasources/DataSourceIndex';
 import { indexedDBStorage } from '../storage/IndexedDBStorage';
 import { getCurrentUserId, isOfflineAccount } from '../../common/utils/userContext';
 
@@ -26,7 +25,7 @@ export class PokedexRepository implements IPokedexRepository {
                 totalPages: Math.ceil(allCaught.length / pageSize)
             };
         } else {
-            const response = await pokedexApiClient.getCaughtPokemon(pageIndex, pageSize);
+            const response = await pokedexDataSource.getCaughtPokemon(pageIndex, pageSize);
 
             return {
                 pokemon: response.caughtPokemon,
@@ -45,7 +44,7 @@ export class PokedexRepository implements IPokedexRepository {
             return await indexedDBStorage.getFavorites(currentUserId || undefined);
         } else {
             // Use API for online accounts - get all caught Pokemon and filter favorites
-            const response = await pokedexApiClient.getCaughtPokemon(0, 1000); // Get a large page for now
+            const response = await pokedexDataSource.getCaughtPokemon(0, 1000); // Get a large page for now
             return response.caughtPokemon.filter((p: CaughtPokemon) => p.isFavorite);
         }
     }
@@ -96,7 +95,7 @@ export class PokedexRepository implements IPokedexRepository {
                 return caughtPokemon;
             } else {
                 // Use API for online accounts
-                return await pokedexApiClient.catchPokemon(pokemonId, notes);
+                return await pokedexDataSource.catchPokemon(pokemonId, notes);
             }
         } catch (error) {
             console.error('Failed to catch Pokemon:', error);
@@ -163,7 +162,7 @@ export class PokedexRepository implements IPokedexRepository {
                 }
             } else {
                 // Use API for online accounts
-                return await pokedexApiClient.catchBulkPokemon(pokemonToCatch, notes);
+                return await pokedexDataSource.catchBulkPokemon(pokemonToCatch, notes);
             }
         } catch (error) {
             console.error('Failed to bulk catch Pokemon:', error);
@@ -207,7 +206,7 @@ export class PokedexRepository implements IPokedexRepository {
                     return false;
                 }
 
-                await pokedexApiClient.releasePokemon(pokemon.pokemon.pokeApiId);
+                await pokedexDataSource.releasePokemon(pokemon.pokemon.pokeApiId);
 
                 await indexedDBStorage.deleteCaughtPokemon(caughtPokemonId);
 
@@ -289,7 +288,7 @@ export class PokedexRepository implements IPokedexRepository {
 
 
                 // Make API call first
-                await pokedexApiClient.releaseBulkPokemon(pokeApiIds);
+                await pokedexDataSource.releaseBulkPokemon(pokeApiIds);
 
                 const successfulIds: number[] = [];
                 for (const caughtId of pokemonToDelete) {
@@ -357,7 +356,7 @@ export class PokedexRepository implements IPokedexRepository {
                     throw new Error('Caught Pokemon not found');
                 }
 
-                return await pokedexApiClient.updateCaughtPokemon(pokemon.pokemon.pokeApiId, updates);
+                return await pokedexDataSource.updateCaughtPokemon(pokemon.pokemon.pokeApiId, updates);
             }
         } catch (error) {
             console.error('Failed to update caught Pokemon:', error);
@@ -373,7 +372,7 @@ export class PokedexRepository implements IPokedexRepository {
                 return await indexedDBStorage.getPokedexStats(currentUserId || undefined);
             } else {
                 // Use API for online accounts
-                return await pokedexApiClient.getPokedexStats();
+                return await pokedexDataSource.getPokedexStats();
             }
         } catch (error) {
             console.error('Failed to get Pokedex stats:', error);

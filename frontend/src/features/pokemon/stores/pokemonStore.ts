@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import type { Pokemon } from '../../../core/entities';
-import type { PokemonFilters } from '../../../core/interfaces';
+import type { Pokemon, PokemonFilters } from '../../../core/types';
 import { PokemonUseCases } from '../../../core/usecases';
 import { pokemonRepository } from '../../../infrastructure/repositories';
 import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStorage';
@@ -237,7 +236,7 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
         const paginatedResult = await pokemonUseCases.getPaginated(pageToFetch, pageSize);
 
         const newPokemonMap = new Map(state.pokemonMap);
-        paginatedResult.pokemon.forEach(pokemon => {
+        paginatedResult.pokemon.forEach((pokemon: Pokemon) => {
             newPokemonMap.set(pokemon.pokeApiId, pokemon);
         });
 

@@ -1,5 +1,4 @@
-import type { Pokemon, CaughtPokemon, User, PokedexStats } from '../../core/entities';
-import type { OfflineAction, IOfflineStorage } from '../../core/interfaces';
+import type { Pokemon, CaughtPokemon, User, PokedexStats, OfflineAction, IOfflineStorage } from '../../core/types';
 import { getLastConsecutiveIdFromIds } from '../../common/utils/pokemonHelpers';
 
 interface PendingAccount {

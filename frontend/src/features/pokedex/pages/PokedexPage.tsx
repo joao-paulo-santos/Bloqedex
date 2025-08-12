@@ -6,15 +6,15 @@ import { PokedexProgress } from '../components/PokedexProgress';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { ErrorMessage } from '../../../components/ui/ErrorMessage';
 import { EmptyPokemonState } from '../../pokemon/components/EmptyPokemonState';
-import { PokemonCard } from '../../pokemon/components/PokemonCard';
-import type { CaughtPokemonFilters } from '../../../core/interfaces/PokemonFilters';
+import { PokedexPokemonCard } from '../components/PokedexPokemonCard';
+import type { CaughtPokemonFilters } from '../../../core/types';
 
 type ViewMode = 'grid' | 'table';
 
 export const PokedexPage: React.FC = () => {
     const [filters, setFilters] = useState<CaughtPokemonFilters>({
-        sortBy: 'caughtDate',
-        sortOrder: 'desc'
+        sortBy: 'pokeApiId',
+        sortOrder: 'asc'
     });
     const [selectedPokemonIds, setSelectedPokemonIds] = useState<Set<number>>(new Set());
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -29,6 +29,7 @@ export const PokedexPage: React.FC = () => {
         loadCaughtPokemon,
         toggleFavorite,
         releaseBulkPokemon,
+        updateCaughtPokemon,
         applyFilters
     } = useCaughtPokemon();
     const { updatePokemonCaughtStatus } = usePokemonStore();
@@ -45,8 +46,8 @@ export const PokedexPage: React.FC = () => {
 
     const handleClearFilters = () => {
         const defaultFilters: CaughtPokemonFilters = {
-            sortBy: 'caughtDate',
-            sortOrder: 'desc'
+            sortBy: 'pokeApiId',
+            sortOrder: 'asc'
         };
         setFilters(defaultFilters);
         applyFilters(defaultFilters);
@@ -88,6 +89,35 @@ export const PokedexPage: React.FC = () => {
             setSelectedPokemonIds(new Set());
         } catch (error) {
             console.error('Failed to release selected Pokemon:', error);
+        }
+    };
+
+    const handleSingleRelease = async (caughtPokemonId: number) => {
+        try {
+            const caughtPokemon = filteredPokemon.find(cp => cp.id === caughtPokemonId);
+            if (!caughtPokemon) return;
+
+            await releaseBulkPokemon([caughtPokemonId]);
+
+            updatePokemonCaughtStatus(caughtPokemon.pokemon.pokeApiId, false);
+        } catch (error) {
+            console.error('Failed to release Pokemon:', error);
+        }
+    };
+
+    const handleUpdateNotes = async (caughtPokemonId: number, notes: string) => {
+        try {
+            await updateCaughtPokemon(caughtPokemonId, { notes });
+        } catch (error) {
+            console.error('Failed to update Pokemon notes:', error);
+        }
+    };
+
+    const handleUpdatePokemon = async (caughtPokemonId: number, updates: { notes?: string; isFavorite?: boolean }) => {
+        try {
+            await updateCaughtPokemon(caughtPokemonId, updates);
+        } catch (error) {
+            console.error('Failed to update Pokemon:', error);
         }
     };
 
@@ -260,25 +290,23 @@ export const PokedexPage: React.FC = () => {
 
                     {/* Pokemon Grid/List */}
                     {viewMode === 'grid' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                             {filteredPokemon.map((caughtPokemon) => (
-                                <div key={caughtPokemon.id} className="relative">
-                                    {/* Use PokemonCard component with selection and favorite */}
-                                    <PokemonCard
-                                        pokemon={caughtPokemon.pokemon}
-                                        className="h-full"
-                                        showCatchButton={false}
-                                        showReleaseButton={false}
-                                        isSelected={selectedPokemonIds.has(caughtPokemon.id)}
-                                        onSelect={() => handlePokemonSelect(caughtPokemon.id)}
-                                        sortBy={filters.sortBy}
-                                        caughtDate={caughtPokemon.caughtDate}
-                                        notes={caughtPokemon.notes}
-                                        isFavorite={caughtPokemon.isFavorite}
-                                        onToggleFavorite={() => toggleFavorite(caughtPokemon.id)}
-                                        showCaughtIndicator={false}
-                                    />
-                                </div>
+                                <PokedexPokemonCard
+                                    key={caughtPokemon.id}
+                                    pokemon={caughtPokemon.pokemon}
+                                    className="h-full"
+                                    onRelease={() => handleSingleRelease(caughtPokemon.id)}
+                                    isSelected={selectedPokemonIds.has(caughtPokemon.id)}
+                                    onSelect={() => handlePokemonSelect(caughtPokemon.id)}
+                                    sortBy={filters.sortBy}
+                                    caughtDate={caughtPokemon.caughtDate}
+                                    notes={caughtPokemon.notes}
+                                    isFavorite={caughtPokemon.isFavorite}
+                                    onToggleFavorite={() => toggleFavorite(caughtPokemon.id)}
+                                    onUpdateNotes={(notes) => handleUpdateNotes(caughtPokemon.id, notes)}
+                                    onUpdatePokemon={(updates) => handleUpdatePokemon(caughtPokemon.id, updates)}
+                                />
                             ))}
                         </div>
                     ) : (

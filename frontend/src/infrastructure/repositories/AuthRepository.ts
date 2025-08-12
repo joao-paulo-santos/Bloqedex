@@ -1,15 +1,14 @@
-import type { User } from '../../core/entities';
-import type { IAuthRepository, AuthResponse, LoginRequest, RegisterRequest } from '../../core/interfaces';
-import { authApiClient } from '../api/ApiIndex';
+import type { User, IAuthRepository, AuthResponse, LoginRequest, RegisterRequest } from '../../core/types';
+import { authDataSource } from '../datasources/DataSourceIndex';
 import { indexedDBStorage } from '../storage/IndexedDBStorage';
 
 export class AuthRepository implements IAuthRepository {
     async login(credentials: LoginRequest): Promise<AuthResponse> {
-        return await authApiClient.login(credentials);
+        return await authDataSource.login(credentials);
     }
 
     async register(userData: RegisterRequest): Promise<AuthResponse> {
-        return await authApiClient.register(userData);
+        return await authDataSource.register(userData);
     }
 
     async getCurrentUser(): Promise<User | null> {
@@ -28,11 +27,11 @@ export class AuthRepository implements IAuthRepository {
     }
 
     logout(): void {
-        authApiClient.logout();
+        authDataSource.logout();
     }
 
     async isOnline(): Promise<boolean> {
-        return await authApiClient.checkHealth();
+        return await authDataSource.checkHealth();
     }
 }
 

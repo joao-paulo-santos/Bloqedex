@@ -8,4 +8,4 @@ export type {
     IPokemonRepository,
     IPokedexRepository,
     ISharingRepository
-} from '../../core/interfaces';
+} from '../../core/types';

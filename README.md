@@ -34,29 +34,36 @@ After speaking with Pokémon Trainers, we identified the need for a centralized 
 #### For Pokémon Trainers
 - **Complete Pokédex Management** - View all Pokémon with names, pictures, and caught status
 - **Personal Collection** - Track caught Pokémon with detailed statistics and notes
-- **Offline Capability** - Access your Pokédex with limited or no internet connectivity
+- **Offline-First Capability** - Access your Pokédex with limited or no internet connectivity
+- **Smart Synchronization** - Seamless online/offline state management
 - **Sharing System** - Share individual Pokémon or entire collections with fellow trainers
 - **Progress Tracking** - Quick overview of Pokédex completion and statistics
 
 #### Advanced Management
-- **Smart Filtering & Sorting** - Filter by name, height, types, and timestamp
+- **Smart Filtering & Sorting** - Filter by name, height, types, stats, and timestamp
 - **Bulk Operations** - Catch or release multiple Pokémon at once
 - **Personal Notes** - Attach custom notes to each caught Pokémon
-- **Multi-View Modes** - Analytical table view and mobile-optimized layouts
-- **Data Export** - Export Pokédex to CSV format
+- **Multi-View Modes** - Responsive grid and analytical table views
+- **Data Export** - Export filtered views, selected pokemon or your Pokédex to CSV format
+- **Authentication Flexibility** - Support for both online and offline accounts
 
 #### Technical Excellence
 - **Responsive Design** - Optimized for desktop, tablet, and mobile devices
-- **Smart Caching** - Efficient data loading with PokéAPI integration
+- **Smart Caching** - Intelligent data loading with PokéAPI integration
 - **Real-time Updates** - Live progress tracking and instant data synchronization
+- **Offline-First Architecture** - Full functionality without internet connection
+- **Type-Safe Development** - Complete TypeScript implementation with strict typing
+- **Performance Optimized** - Smart pagination, lazy loading, and bundle optimization
 
 ### Built With
 
-#### Frontend Stack
-- **Vite + React** - [WIP]
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first styling
-- **Zustand** - Lightweight state management
+#### [Frontend](frontend/README.md) Stack
+- **React 19** - Latest React with concurrent features
+- **TypeScript 5.8** - Strict type checking and modern JS features  
+- **Vite 7** - Lightning fast build tool and dev server
+- **Tailwind CSS 4** - Utility-first styling with custom design system
+- **Zustand** - Lightweight state management with persistence
+- **IndexedDB** - Browser-native offline storage
 
 #### [Backend](backend/README.md) Stack 
 - **.NET 8** - Modern, high-performance backend
@@ -73,25 +80,30 @@ After speaking with Pokémon Trainers, we identified the need for a centralized 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │    Backend      │    │   External      │
-│                 │◄──►│   (.NET 8)      │◄──►│   (PokéAPI)     │
+│   (React 19)    │◄──►│   (.NET 8)      │◄──►│   (PokéAPI)     │
 │                 │    │                 │    │                 │
-│                 │    │ • Clean Arch    │    │ • Pokémon Data  │
-│ • Offline First │    │ • Smart Cache   │    │ • Rate Limited  │
-│                 │    │ • JWT Auth      │    │ • 1000+ Pokémon │
+│ • Offline First │    │ • Clean Arch    │    │ • Pokémon Data  │
+│ • IndexedDB     │    │ • Smart Cache   │    │ • Rate Limited  │
+│ • Type Safety   │    │ • JWT Auth      │    │ • 1000+ Pokémon │
+│ • Zustand       │    │ • EF Core       │    │ • REST API      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ### Project Structure
 ```
 bloqedex/
-├── frontend/          # Frontend
+├── frontend/            # React TypeScript Frontend
 │   ├── src/
-│   │   ├── app/         # App Router pages
-│   │   ├── components/  # Reusable UI components
-│   │   ├── features/    # Feature-specific modules
-│   │   ├── stores/      # Zustand state management
-│   │   └── types/       # TypeScript definitions
-│   └── public/          # Static assets
+│   │   ├── components/    # Shared UI components
+│   │   ├── features/      # Feature-based modules
+│   │   │   ├── auth/      # Authentication & user management
+│   │   │   ├── pokemon/   # Pokémon browsing & management
+│   │   │   ├── pokedex/   # User's caught Pokémon
+│   │   │   └── sharing/   # Pokémon sharing functionality
+│   │   ├── infrastructure/ # External concerns (API, storage)
+│   │   ├── stores/        # Zustand state management
+│   │   └── core/          # Business logic & types
+│   └── public/            # Static assets
 │
 └── backend/             # Backend (.NET 8 API)
     ├── BloqedexApi/     # Web API layer
@@ -144,17 +156,19 @@ bloqedex/
 
 For detailed setup instructions and technical documentation:
 
-- **Frontend**: See [frontend/README.md](frontend/README.md) for offline mode, and deployment
-- **Backend**: See [backend/README.md](backend/README.md) for API documentation, architecture details, and configuration
+- **Frontend**: See [frontend/README.md](frontend/README.md) for offline-first architecture, state management, UI components, testing, and deployment
+- **Backend**: See [backend/README.md](backend/README.md) for API documentation, clean architecture details, and configuration
 
 
 ## Technical Highlights
 
 ### Frontend
-- **Offline First Web App** - Seemsless offline experience with smart sync
-- **Responsive Design** - Seamless experience across all devices
-- **Performance Optimized** - Image optimization, lazy loading, caching
-- **Type Safety** - Full TypeScript implementation
+- **Offline-First Web App** - Seamless offline experience with smart synchronization
+- **Advanced State Management** - Zustand stores with IndexedDB persistence
+- **Responsive Design** - Mobile-first approach with desktop optimization
+- **Performance Optimized** - Smart caching, lazy loading, and bundle optimization
+- **Type Safety** - Complete TypeScript implementation with strict typing
+- **Modern Architecture** - Feature-based modules with clean separation of concerns
 
 ### Backend Architecture
 - **Clean Architecture** - Domain-driven design with clear separation of concerns
@@ -179,15 +193,27 @@ For detailed setup instructions and technical documentation:
 - Track completion progress and statistics
 - Advanced filtering and sorting options
 
+### UI Showcase
+
+#### Browse All Pokémon
+![Browse Interface](frontend/readme_assets/browse.png)
+*Responsive grid layout with advanced filtering, bulk selection, and seamless offline/online switching*
+
+#### My Pokédx Collection  
+![Pokédx Interface](frontend/readme_assets/pokedex.png)
+*Personal collection management with progress tracking, favorites, and detailed statistics*
+
 ### Sharing & Collaboration
 - Generate secure sharing links
 - Share individual Pokémon or collections
 - View limits and expiration controls
 - Public viewing without authentication
 
-### Offline
+### Offline-First Experience
 - Full offline browsing capability
-- Background sync when online
+- Smart background sync when online
+- IndexedDB persistence with conflict resolution
+- Pending actions queue for seamless user experience
 
 
 ## Contributing

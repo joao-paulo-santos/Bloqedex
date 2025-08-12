@@ -1,5 +1,4 @@
-import type { User } from '../entities';
-import type { IAuthRepository, LoginRequest, RegisterRequest } from '../interfaces';
+import type { User, IAuthRepository, LoginRequest, RegisterRequest } from '../types';
 
 export class AuthUseCases {
     private authRepo: IAuthRepository;
@@ -9,8 +8,8 @@ export class AuthUseCases {
     }
 
     async login(credentials: LoginRequest): Promise<User> {
-        if (!credentials.email.trim()) {
-            throw new Error('Email is required');
+        if (!credentials.usernameOrEmail.trim()) {
+            throw new Error('Username or email is required');
         }
         if (!credentials.password) {
             throw new Error('Password is required');

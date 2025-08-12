@@ -1,4 +1,6 @@
-import type { Pokemon, CaughtPokemon, PokedexStats } from '../entities';
+import type { Pokemon } from '../entities/Pokemon';
+import type { CaughtPokemon } from '../entities/CaughtPokemon';
+import type { PokedexStats } from '../entities/PokedexStats';
 
 export interface PaginatedResponse<T> {
     pokemon: T[];

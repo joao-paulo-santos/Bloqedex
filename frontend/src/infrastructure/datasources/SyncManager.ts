@@ -1,11 +1,11 @@
-import { BaseApiClient } from './BaseApiClient';
+import { BaseDataSource } from './remote/BaseDataSource';
 import { indexedDBStorage } from '../storage/IndexedDBStorage';
 import { getCurrentUserId, isOfflineAccount } from '../../common/utils/userContext';
-import { pokedexApiClient } from './ApiIndex';
-import type { CaughtPokemon } from '../../core/entities';
+import { pokedexDataSource } from './DataSourceIndex';
+import type { CaughtPokemon } from '../../core/types';
 
 // Handles offline synchronization operations
-export class SyncManager extends BaseApiClient {
+export class SyncManager extends BaseDataSource {
 
     async syncPendingActions(forceSync = false): Promise<void> {
         if (!(await this.isOnline())) return;
@@ -21,7 +21,7 @@ export class SyncManager extends BaseApiClient {
                 switch (action.type) {
                     case 'catch': {
                         const payload = action.payload as { pokemonId: number; notes?: string };
-                        const catchResponse = await pokedexApiClient.catchPokemon(payload.pokemonId, payload.notes);
+                        const catchResponse = await pokedexDataSource.catchPokemon(payload.pokemonId, payload.notes);
                         await this.cleanupAndSaveCatchResponse(catchResponse, payload.pokemonId);
                         break;
                     }
@@ -30,7 +30,7 @@ export class SyncManager extends BaseApiClient {
                         const pokemonIds = payload.pokemonToCatch.map(p => p.pokemonId);
                         const notes = payload.pokemonToCatch[0]?.notes;
 
-                        const bulkCatchResponse = await pokedexApiClient.catchBulkPokemon(pokemonIds, notes);
+                        const bulkCatchResponse = await pokedexDataSource.catchBulkPokemon(pokemonIds, notes);
                         for (const caught of bulkCatchResponse) {
                             await this.cleanupAndSaveCatchResponse(caught, caught.pokemon.pokeApiId);
                         }
@@ -38,7 +38,7 @@ export class SyncManager extends BaseApiClient {
                     }
                     case 'release': {
                         const payload = action.payload as { pokeApiId: number };
-                        await pokedexApiClient.releasePokemon(payload.pokeApiId);
+                        await pokedexDataSource.releasePokemon(payload.pokeApiId);
                         break;
                     }
                     case 'bulk_release': {
@@ -47,14 +47,14 @@ export class SyncManager extends BaseApiClient {
                         const numericIds = payload.pokeApiIds.map(id => Number(id));
 
                         if (numericIds.length > 0) {
-                            await pokedexApiClient.releaseBulkPokemon(numericIds);
+                            await pokedexDataSource.releaseBulkPokemon(numericIds);
                         }
                         break;
                     }
                     case 'update': {
                         const payload = action.payload as { pokemonApiId: number; notes?: string; isFavorite?: boolean };
 
-                        const updateResponse = await pokedexApiClient.updateCaughtPokemon(payload.pokemonApiId, payload);
+                        const updateResponse = await pokedexDataSource.updateCaughtPokemon(payload.pokemonApiId, payload);
                         if (updateResponse) {
                             await indexedDBStorage.saveCaughtPokemon(updateResponse);
                         }

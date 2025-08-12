@@ -1,5 +1,4 @@
-import type { CaughtPokemon, PokedexStats } from '../entities';
-import type { IPokedexRepository, PaginatedResponse } from '../interfaces';
+import type { CaughtPokemon, PokedexStats, IPokedexRepository, PaginatedResponse } from '../types';
 
 export class PokedexUseCases {
     private pokedexRepo: IPokedexRepository;

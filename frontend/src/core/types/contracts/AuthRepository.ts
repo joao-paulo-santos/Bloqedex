@@ -1,5 +1,5 @@
-import type { User } from '../entities';
-import type { AuthResponse, LoginRequest, RegisterRequest } from './AuthTypes';
+import type { User } from '../entities/User';
+import type { AuthResponse, LoginRequest, RegisterRequest } from '../requests';
 
 export interface IAuthRepository {
     login(credentials: LoginRequest): Promise<AuthResponse>;

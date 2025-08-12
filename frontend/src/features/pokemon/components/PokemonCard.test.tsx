@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { PokemonCard } from './PokemonCard'
-import type { Pokemon } from '../../../core/entities'
+import type { Pokemon } from '../../../core/types'
 
 // Mock Zustand stores
 vi.mock('../../../stores', () => ({

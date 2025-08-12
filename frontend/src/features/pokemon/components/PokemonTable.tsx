@@ -1,7 +1,6 @@
 import React from 'react';
 import { EmptyPokemonState } from './EmptyPokemonState';
-import type { Pokemon } from '../../../core/entities';
-import type { PokemonFilters } from '../../../core/interfaces';
+import type { Pokemon, PokemonFilters } from '../../../core/types';
 
 interface PokemonTableProps {
     pokemon: Pokemon[];

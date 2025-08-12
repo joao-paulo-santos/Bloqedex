@@ -1,4 +1,4 @@
-import type { SharedPokemon } from '../entities';
+import type { SharedPokemon } from '../entities/SharedPokemon';
 
 export interface ISharingRepository {
     createShare(data: {

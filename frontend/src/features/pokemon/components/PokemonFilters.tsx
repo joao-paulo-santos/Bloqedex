@@ -1,5 +1,5 @@
 import React from 'react';
-import type { PokemonFilters } from '../../../core/interfaces';
+import type { PokemonFilters } from '../../../core/types';
 import { SearchIcon, FilterIcon } from '../../../components/common/Icons';
 
 interface PokemonFiltersProps {

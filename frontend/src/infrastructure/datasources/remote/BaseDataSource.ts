@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from 'axios';
-import { apiConfig } from '../../config/api';
-import { useAppStore } from '../../stores';
+import { apiConfig } from '../../../config/api';
+import { useAppStore } from '../../../stores';
 
 export const extractErrorMessage = (error: unknown): string => {
     if (error && typeof error === 'object' && 'response' in error) {
@@ -51,7 +51,7 @@ export const extractErrorMessage = (error: unknown): string => {
     return 'An unexpected error occurred';
 };
 
-export class BaseApiClient {
+export class BaseDataSource {
     protected client: AxiosInstance;
 
     constructor() {

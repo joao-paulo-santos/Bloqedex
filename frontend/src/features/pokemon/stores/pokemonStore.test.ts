@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { usePokemonStore } from '../stores/pokemonStore'
-import type { Pokemon } from '../../../core/entities'
+import type { Pokemon } from '../../../core/types'
 
 vi.mock('../../../core/usecases', () => ({
     PokemonUseCases: vi.fn().mockImplementation(() => ({

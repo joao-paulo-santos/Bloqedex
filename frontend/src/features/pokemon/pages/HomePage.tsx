@@ -6,7 +6,7 @@ import { PokemonGrid } from '../components/PokemonGrid';
 import { PokemonTable } from '../components/PokemonTable';
 import { PokemonFiltersComponent } from '../components/PokemonFilters';
 import { toastEvents } from '../../../common/utils/eventBus';
-import type { PokemonFilters } from '../../../core/interfaces';
+import type { PokemonFilters } from '../../../core/types';
 
 type ViewMode = 'grid' | 'table';
 

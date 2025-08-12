@@ -1,5 +1,4 @@
-import type { Pokemon } from '../entities';
-import type { IPokemonRepository, PaginatedResponse } from '../interfaces';
+import type { Pokemon, IPokemonRepository, PaginatedResponse } from '../types';
 
 export class PokemonUseCases {
     private pokemonRepo: IPokemonRepository;

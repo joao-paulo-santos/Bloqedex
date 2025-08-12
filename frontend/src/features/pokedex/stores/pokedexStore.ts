@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { useState, useCallback, useEffect } from 'react';
-import type { CaughtPokemon, PokedexStats } from '../../../core/entities';
-import type { CaughtPokemonFilters } from '../../../core/interfaces/PokemonFilters';
+import type { CaughtPokemon, PokedexStats, CaughtPokemonFilters } from '../../../core/types';
 import { PokedexUseCases } from '../../../core/usecases';
 import { pokedexRepository } from '../../../infrastructure/repositories';
 
@@ -491,6 +490,7 @@ export const useCaughtPokemon = () => {
         toggleFavorite,
         releasePokemon,
         releaseBulkPokemon,
+        updateCaughtPokemon,
         applyFilters,
         clearError,
         cleanupDuplicates

@@ -1,6 +1,5 @@
-import type { SharedPokemon } from '../../core/entities';
-import type { ISharingRepository } from '../../core/interfaces';
-import { sharingApiClient } from '../api/ApiIndex';
+import type { SharedPokemon, ISharingRepository } from '../../core/types';
+import { sharingDataSource } from '../datasources/DataSourceIndex';
 
 export class SharingRepository implements ISharingRepository {
     async createShare(data: {
@@ -12,7 +11,7 @@ export class SharingRepository implements ISharingRepository {
         expiresAt?: string;
     }): Promise<SharedPokemon | null> {
         try {
-            return await sharingApiClient.sharePokedex(
+            return await sharingDataSource.sharePokedex(
                 data.title,
                 data.description,
                 data.maxViews,
@@ -26,7 +25,7 @@ export class SharingRepository implements ISharingRepository {
 
     async getSharedPokemon(shareToken: string): Promise<SharedPokemon | null> {
         try {
-            return await sharingApiClient.getSharedPokedex(shareToken);
+            return await sharingDataSource.getSharedPokedex(shareToken);
         } catch (error) {
             console.error('Failed to get shared Pokemon:', error);
             return null;
@@ -35,7 +34,7 @@ export class SharingRepository implements ISharingRepository {
 
     async getMyShares(): Promise<SharedPokemon[]> {
         try {
-            return await sharingApiClient.getMyShares();
+            return await sharingDataSource.getMyShares();
         } catch (error) {
             console.error('Failed to get my shares:', error);
             return [];

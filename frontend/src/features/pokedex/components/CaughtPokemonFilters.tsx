@@ -1,6 +1,6 @@
 import React from 'react';
 import { SearchIcon, FilterIcon } from '../../../components/common/Icons';
-import type { CaughtPokemonFilters } from '../../../core/interfaces/PokemonFilters';
+import type { CaughtPokemonFilters } from '../../../core/types';
 
 interface CaughtPokemonFiltersProps {
     filters: CaughtPokemonFilters;

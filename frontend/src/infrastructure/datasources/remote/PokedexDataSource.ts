@@ -1,11 +1,10 @@
-import type { CaughtPokemon, PokedexStats } from '../../core/entities';
-import type { OfflineAction } from '../../core/interfaces';
-import { BaseApiClient } from './BaseApiClient';
-import { indexedDBStorage } from '../storage/IndexedDBStorage';
-import { getCurrentUserId } from '../../common/utils/userContext';
+import type { CaughtPokemon, PokedexStats, OfflineAction } from '../../../core/types';
+import { BaseDataSource } from './BaseDataSource';
+import { indexedDBStorage } from '../../storage/IndexedDBStorage';
+import { getCurrentUserId } from '../../../common/utils/userContext';
 
-// API client for Pokedex operations (caught Pokemon management)
-export class PokedexApiClient extends BaseApiClient {
+// Data source for Pokedex operations (caught Pokemon management)
+export class PokedexDataSource extends BaseDataSource {
     private isNetworkError(error: unknown): boolean {
         if (!error || typeof error !== 'object') return false;
 
@@ -414,4 +413,4 @@ export class PokedexApiClient extends BaseApiClient {
 }
 
 // Export singleton instance
-export const pokedexApiClient = new PokedexApiClient();
+export const pokedexDataSource = new PokedexDataSource();

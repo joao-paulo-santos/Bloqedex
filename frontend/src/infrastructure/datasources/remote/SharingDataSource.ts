@@ -1,8 +1,8 @@
-import type { SharedPokemon } from '../../core/entities';
-import { BaseApiClient } from './BaseApiClient';
+import type { SharedPokemon } from '../../../core/types';
+import { BaseDataSource } from './BaseDataSource';
 
-// API client for sharing operations
-export class SharingApiClient extends BaseApiClient {
+// Data source for sharing operations
+export class SharingDataSource extends BaseDataSource {
     async sharePokedex(title: string, description?: string, maxViews?: number, expiresAt?: string): Promise<SharedPokemon> {
         const payload = { title, description, maxViews, expiresAt };
 
@@ -21,4 +21,4 @@ export class SharingApiClient extends BaseApiClient {
     }
 }
 
-export const sharingApiClient = new SharingApiClient();
+export const sharingDataSource = new SharingDataSource();

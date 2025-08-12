@@ -1,4 +1,4 @@
-import type { Pokemon } from '../../core/entities';
+import type { Pokemon } from '../../core/types';
 
 export function getLastConsecutiveId(pokemon: Pokemon[]): number {
     if (pokemon.length === 0) {

@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, CaughtPokemon } from '../../../core/entities';
+import type { User, CaughtPokemon } from '../../../core/types';
 import { authRepository } from '../../../infrastructure/repositories';
 import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStorage';
 import { toastEvents } from '../../../common/utils/eventBus';
-import { extractErrorMessage } from '../../../infrastructure/api/BaseApiClient';
+import { extractErrorMessage } from '../../../infrastructure/datasources/remote/BaseDataSource';
 
 interface PendingAccount {
     id: string;
@@ -158,7 +158,7 @@ export const useAuthStore = create<AuthState>()(
 
                     // Sync all pending actions to the online account
                     try {
-                        const { syncManager } = await import('../../../infrastructure/api/SyncManager');
+                        const { syncManager } = await import('../../../infrastructure/datasources/DataSourceIndex');
                         await syncManager.syncPendingActions(true); // Force sync during conversion
                     } catch (error) {
                         console.error('Failed to sync pending actions:', error);

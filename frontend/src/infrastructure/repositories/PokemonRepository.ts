@@ -1,6 +1,5 @@
-import type { Pokemon } from '../../core/entities';
-import type { IPokemonRepository, PaginatedResponse } from '../../core/interfaces';
-import { pokemonApiClient } from '../api/ApiIndex';
+import type { Pokemon, IPokemonRepository, PaginatedResponse } from '../../core/types';
+import { pokemonDataSource } from '../datasources/DataSourceIndex';
 import { indexedDBStorage } from '../storage/IndexedDBStorage';
 
 export class PokemonRepository implements IPokemonRepository {
@@ -8,15 +7,15 @@ export class PokemonRepository implements IPokemonRepository {
         pageIndex: number = 1,
         pageSize: number = 20
     ): Promise<PaginatedResponse<Pokemon>> {
-        return await pokemonApiClient.getPokemonList(pageIndex, pageSize);
+        return await pokemonDataSource.getPokemonList(pageIndex, pageSize);
     }
 
     async getById(id: number): Promise<Pokemon | null> {
-        return await pokemonApiClient.getPokemon(id);
+        return await pokemonDataSource.getPokemon(id);
     }
 
     async search(name: string): Promise<Pokemon[]> {
-        return await pokemonApiClient.searchPokemon(name);
+        return await pokemonDataSource.searchPokemon(name);
     }
 
     async savePokemon(pokemon: Pokemon): Promise<void> {

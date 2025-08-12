@@ -1,38 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Pokemon, PokemonFilters } from '../../../core/types';
 import { useAuthStore } from '../../auth/stores/authStore';
 
-interface PokemonCardProps {
+interface PokedexPokemonCardProps {
     pokemon: Pokemon;
-    onCatch?: () => void;
     onRelease?: () => void;
-    showCatchButton?: boolean;
-    showReleaseButton?: boolean;
     className?: string;
     sortBy?: PokemonFilters['sortBy'];
     isSelected?: boolean;
     onSelect?: () => void;
     caughtDate?: string;
     notes?: string;
-    showCaughtIndicator?: boolean;
+    isFavorite?: boolean;
+    onToggleFavorite?: () => void;
+    onUpdateNotes?: (notes: string) => void;
+    onUpdatePokemon?: (updates: { notes?: string; isFavorite?: boolean }) => void;
 }
 
-export const PokemonCard: React.FC<PokemonCardProps> = ({
+export const PokedexPokemonCard: React.FC<PokedexPokemonCardProps> = ({
     pokemon,
-    onCatch,
     onRelease,
-    showCatchButton = false,
-    showReleaseButton = false,
     className = '',
     sortBy,
     isSelected = false,
     onSelect,
     caughtDate,
     notes,
-    showCaughtIndicator = true
+    isFavorite = false,
+    onToggleFavorite,
+    onUpdateNotes,
+    onUpdatePokemon,
 }) => {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    const [editedNotes, setEditedNotes] = useState(notes || '');
+    const [editedIsFavorite, setEditedIsFavorite] = useState(isFavorite);
     const { user } = useAuthStore();
+
+    // Sync the edited states with the props when they change or when dialog opens
+    useEffect(() => {
+        setEditedNotes(notes || '');
+        setEditedIsFavorite(isFavorite);
+    }, [notes, isFavorite, showDetailsDialog]);
+
+    const formatName = (name: string): string => {
+        return name
+            .split('-')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+
     const getTypeColor = (typeName: string): string => {
         if (!typeName) {
             return 'bg-gray-500';
@@ -40,35 +56,36 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
 
         const typeColors: Record<string, string> = {
             normal: 'bg-gray-400',
-            fighting: 'bg-red-600',
-            flying: 'bg-indigo-400',
-            poison: 'bg-purple-600',
-            ground: 'bg-yellow-600',
-            rock: 'bg-yellow-800',
-            bug: 'bg-green-500',
-            ghost: 'bg-purple-800',
-            steel: 'bg-gray-600',
-            fire: 'bg-orange-500',
+            fire: 'bg-red-500',
             water: 'bg-blue-500',
-            grass: 'bg-green-600',
             electric: 'bg-yellow-400',
+            grass: 'bg-green-500',
+            ice: 'bg-blue-300',
+            fighting: 'bg-red-700',
+            poison: 'bg-purple-500',
+            ground: 'bg-yellow-600',
+            flying: 'bg-indigo-400',
             psychic: 'bg-pink-500',
-            ice: 'bg-cyan-400',
+            bug: 'bg-green-400',
+            rock: 'bg-yellow-800',
+            ghost: 'bg-purple-700',
             dragon: 'bg-indigo-700',
             dark: 'bg-gray-800',
-            fairy: 'bg-pink-400',
+            steel: 'bg-gray-600',
+            fairy: 'bg-pink-300',
         };
+
         return typeColors[typeName.toLowerCase()] || 'bg-gray-500';
     };
 
-    const formatName = (name: string): string => {
-        return name.charAt(0).toUpperCase() + name.slice(1);
-    };
-
-    const getSortValue = (): { label: string; value: string | number; notes?: string } | null => {
-        if (!sortBy || sortBy === 'pokeApiId') return null;
+    const getSortValue = () => {
+        if (!sortBy) return null;
 
         switch (sortBy) {
+            case 'pokeApiId':
+                return { label: 'Pokedex #', value: `#${pokemon.pokeApiId.toString().padStart(3, '0')}` };
+            case 'name':
+                return { label: 'Name', value: formatName(pokemon.name) };
             case 'height':
                 return { label: 'Height', value: `${pokemon.height / 10}m` };
             case 'weight':
@@ -95,8 +112,7 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
             case 'caughtDate':
                 return caughtDate ? {
                     label: 'Caught',
-                    value: new Date(caughtDate).toLocaleDateString(),
-                    notes: notes
+                    value: new Date(caughtDate).toLocaleDateString()
                 } : null;
             default:
                 return null;
@@ -104,8 +120,51 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
     };
 
     const sortValue = getSortValue();
+    const isAuthenticated = !!user;
 
-    return (
+    const handleSave = async () => {
+        try {
+            // Check what has changed
+            const favoriteChanged = editedIsFavorite !== isFavorite;
+            const notesChanged = editedNotes !== (notes || '');
+
+            // If nothing changed, no need to save
+            if (!favoriteChanged && !notesChanged) {
+                console.log('No changes to save');
+                return;
+            }
+
+            // Prepare updates object
+            const updates: { notes?: string; isFavorite?: boolean } = {};
+
+            if (notesChanged) {
+                updates.notes = editedNotes;
+            }
+
+            if (favoriteChanged) {
+                updates.isFavorite = editedIsFavorite;
+            }
+
+            // Use the new combined update function if available
+            if (onUpdatePokemon) {
+                await onUpdatePokemon(updates);
+            } else {
+                // Fallback to individual functions for backward compatibility
+                if (notesChanged && onUpdateNotes) {
+                    await onUpdateNotes(editedNotes);
+                }
+
+                if (favoriteChanged && onToggleFavorite) {
+                    await onToggleFavorite();
+                }
+            }
+
+            console.log('Pokemon data saved successfully', updates);
+
+        } catch (error) {
+            console.error('Failed to save Pokemon data:', error);
+        }
+    }; return (
         <div
             className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-75 overflow-hidden cursor-pointer ${isSelected ? 'ring-4 ring-blue-500 ring-opacity-75' : ''
                 } ${className}`}
@@ -133,17 +192,25 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                     #{pokemon.pokeApiId.toString().padStart(3, '0')}
                 </div>
 
-                {/* Caught Indicator */}
-                {showCaughtIndicator && pokemon.isCaught && (
-                    <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                        Caught
-                    </div>
+                {/* Favorite Button */}
+                {onToggleFavorite && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleFavorite();
+                        }}
+                        className="absolute top-2 left-2 p-1 rounded-full hover:bg-white hover:bg-opacity-20 transition-all duration-200"
+                    >
+                        <span className={`text-2xl ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}>
+                            ♥
+                        </span>
+                    </button>
                 )}
             </div>
 
             {/* Pokemon Info */}
             <div className="p-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-center mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">
                         {formatName(pokemon.name)}
                     </h3>
@@ -156,15 +223,10 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                             <span className="text-xs font-medium text-blue-700">{sortValue.label}:</span>
                             <span className="text-sm font-semibold text-blue-800">{sortValue.value}</span>
                         </div>
-                        {sortValue.notes && (
-                            <div className="mt-1 text-xs text-blue-600">
-                                Note: {sortValue.notes}
-                            </div>
-                        )}
                     </div>
                 )}
 
-                {/* Types and View Details */}
+                {/* Types and Edit Details */}
                 <div className="flex justify-between items-center mb-3">
                     <div className="flex flex-wrap gap-1">
                         {pokemon.types?.map((type) => {
@@ -187,39 +249,17 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                         }}
                         className="text-sm text-gray-600 hover:text-gray-800 underline transition-colors flex-shrink-0 cursor-pointer"
                     >
-                        View Details
+                        Edit
                     </button>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Action Buttons - Empty for consistency with Pokemon card layout */}
                 <div className="flex gap-2">
-                    {showCatchButton && onCatch && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onCatch();
-                            }}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                        >
-                            Catch
-                        </button>
-                    )}
-
-                    {showReleaseButton && onRelease && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onRelease();
-                            }}
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-                        >
-                            Release
-                        </button>
-                    )}
+                    {/* No action buttons in Pokedex card - actions are in dialog */}
                 </div>
             </div>
 
-            {/* Details Dialog */}
+            {/* Details Dialog with Release Action */}
             {showDetailsDialog && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="fixed inset-0 backdrop-blur-[2px] bg-black/10 transition-opacity" onClick={() => setShowDetailsDialog(false)}></div>
@@ -360,29 +400,78 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                                                     <span className="font-medium">{new Date(pokemon.firstAddedToPokedex).toLocaleDateString()}</span>
                                                 </div>
                                             )}
+                                            {caughtDate && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Caught:</span>
+                                                    <span className="font-medium">{new Date(caughtDate).toLocaleDateString()}</span>
+                                                </div>
+                                            )}
+
+                                            {/* Favorite Status */}
+                                            {isAuthenticated && (
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600">Favorite:</span>
+                                                    <label className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={editedIsFavorite}
+                                                            onChange={(e) => setEditedIsFavorite(e.target.checked)}
+                                                            className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                                        />
+                                                        <span className="text-sm">Favorite</span>
+                                                    </label>
+                                                </div>
+                                            )}
+
+                                            {/* Notes */}
+                                            {isAuthenticated && (
+                                                <div className="space-y-1">
+                                                    <span className="text-gray-600">Notes:</span>
+                                                    <textarea
+                                                        value={editedNotes}
+                                                        onChange={(e) => setEditedNotes(e.target.value)}
+                                                        placeholder="Add notes about this Pokemon..."
+                                                        className="w-full text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                                        rows={3}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Dialog Action Buttons */}
-                                {user && !pokemon.isCaught && onCatch && (
+                                {isAuthenticated && pokemon.isCaught && (
                                     <div className="mt-6 pt-4 border-t border-gray-200">
-                                        <button
-                                            onClick={() => {
-                                                setShowDetailsDialog(false);
-                                                onCatch();
-                                            }}
-                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                        >
-                                            Catch Pokemon
-                                        </button>
+                                        <div className="flex gap-3">
+                                            {/* Save Button */}
+                                            <button
+                                                onClick={handleSave}
+                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                            >
+                                                Save
+                                            </button>
+
+                                            {/* Release Button */}
+                                            {onRelease && (
+                                                <button
+                                                    onClick={() => {
+                                                        setShowDetailsDialog(false);
+                                                        onRelease();
+                                                    }}
+                                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                                >
+                                                    Release
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 
-                                {!user && !pokemon.isCaught && (
+                                {!isAuthenticated && pokemon.isCaught && (
                                     <div className="mt-6 pt-4 border-t border-gray-200">
                                         <p className="text-sm text-gray-500 text-center">
-                                            Sign in to catch Pokemon
+                                            Sign in to release Pokemon
                                         </p>
                                     </div>
                                 )}
