@@ -6,7 +6,7 @@ import { indexedDBStorage } from '../storage/IndexedDBStorage';
 // API client for authentication operations
 export class AuthApiClient extends BaseApiClient {
 
-    private decodeJWT(token: string): { sub?: number; userId?: number; id?: number; exp?: number } | null {
+    private decodeJWT(token: string): { nameid?: string; unique_name?: string; role?: string; exp?: number;[key: string]: unknown } | null {
         try {
             const parts = token.split('.');
             if (parts.length !== 3) {
@@ -35,11 +35,16 @@ export class AuthApiClient extends BaseApiClient {
 
     private getUserIdFromToken(token: string): number | null {
         const payload = this.decodeJWT(token);
-        return payload?.sub || payload?.userId || payload?.id || null;
+        if (!payload?.nameid) {
+            return null;
+        }
+
+        const userId = parseInt(payload.nameid, 10);
+        return isNaN(userId) ? null : userId;
     }
 
     async login(credentials: LoginRequest): Promise<AuthResponse> {
-        const response = await this.client.post<AuthResponse>('/auth/login', credentials);
+        const response = await this.client.post<AuthResponse>('/Auth/login', credentials);
         const { token, user } = response.data;
 
         localStorage.setItem('auth_token', token);
@@ -49,7 +54,7 @@ export class AuthApiClient extends BaseApiClient {
     }
 
     async register(userData: RegisterRequest): Promise<AuthResponse> {
-        const response = await this.client.post<AuthResponse>('/auth/register', userData);
+        const response = await this.client.post<AuthResponse>('/Auth/register', userData);
         const { token, user } = response.data;
 
         localStorage.setItem('auth_token', token);
@@ -59,13 +64,7 @@ export class AuthApiClient extends BaseApiClient {
     }
 
     async logout(): Promise<void> {
-        try {
-            await this.client.post('/auth/logout');
-        } catch (error) {
-            console.warn('Logout request failed:', error);
-        } finally {
-            this.clearAuth();
-        }
+        this.clearAuth();
     }
 
     async getCurrentUser(): Promise<User | null> {
@@ -99,7 +98,7 @@ export class AuthApiClient extends BaseApiClient {
             // If we're online, try to refresh user data from API
             if (navigator.onLine) {
                 try {
-                    const response = await this.client.get<User>('/auth/me');
+                    const response = await this.client.get<User>('/Auth/me');
                     const freshUser = response.data;
 
                     // Update cached user data with fresh data

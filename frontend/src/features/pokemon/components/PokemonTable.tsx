@@ -110,7 +110,6 @@ export const PokemonTable: React.FC<PokemonTableProps> = ({
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Types</th>
                         <SortableHeader column="height">Height</SortableHeader>
                         <SortableHeader column="weight">Weight</SortableHeader>
-                        <SortableHeader column="baseExperience">Base Exp</SortableHeader>
                         <SortableHeader column="hp">HP</SortableHeader>
                         <SortableHeader column="attack">Attack</SortableHeader>
                         <SortableHeader column="defense">Defense</SortableHeader>
@@ -151,7 +150,7 @@ export const PokemonTable: React.FC<PokemonTableProps> = ({
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap">
                                     <img
-                                        src={p.spriteUrl || p.imageUrl || '/placeholder-pokemon.png'}
+                                        src={p.spriteUrl || p.officialArtworkUrl || '/placeholder-pokemon.png'}
                                         alt={p.name}
                                         className="w-12 h-12 object-contain"
                                     />
@@ -176,9 +175,6 @@ export const PokemonTable: React.FC<PokemonTableProps> = ({
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {p.weight ? `${(p.weight / 10).toFixed(1)}kg` : '-'}
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {p.baseExperience || '-'}
                                 </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {p.hp || '-'}

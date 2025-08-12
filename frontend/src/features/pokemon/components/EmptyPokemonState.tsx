@@ -12,7 +12,7 @@ export const EmptyPokemonState: React.FC<EmptyPokemonStateProps> = ({
     showHint = true,
 }) => {
     return (
-        <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="flex flex-col items-center justify-center pb-16 px-4">
             <div className="mb-8">
                 <img
                     src="/sleepypika.png"

@@ -10,6 +10,7 @@ import { usePokemonStore } from '../features/pokemon';
 import { authRepository } from '../infrastructure/repositories';
 import { apiConfig } from '../config/api';
 import { toastEvents } from '../common/utils/eventBus';
+import { syncManager } from '../infrastructure/api/SyncManager';
 
 interface AppGlobalState {
   isOnline: boolean;
@@ -26,7 +27,25 @@ export const useAppStore = create<AppGlobalState>((set, get) => ({
   lastHealthCheck: 0,
 
   setOnlineStatus: (status: boolean) => {
+    const oldStatus = get().isOnline;
     set({ isOnline: status, lastHealthCheck: Date.now() });
+
+    if (!oldStatus && status) {
+
+      // Only sync pending actions if user has an online account
+      // Offline accounts should only sync when explicitly converting to online
+      import('../features/auth/stores/authStore').then(({ useAuthStore }) => {
+        const authState = useAuthStore.getState();
+
+        if (!authState.isOfflineAccount && authState.isAuthenticated) {
+          syncManager.syncPendingActions().catch(error => {
+            console.error('Failed to sync pending actions after reconnection:', error);
+          });
+        }
+      }).catch(error => {
+        console.error('Failed to check auth state for sync:', error);
+      });
+    }
   },
 
   updateLastSyncTime: () => {
@@ -81,25 +100,15 @@ export const initializeStores = async () => {
   // Initial backend health check
   await appStore.checkBackendHealth();
 
+  // Start periodic sync for offline actions
+  syncManager.startPeriodicSync();
+
   // Set up periodic backend health checks using configured interval
   setInterval(() => {
     appStore.checkBackendHealth();
   }, apiConfig.healthCheckInterval);
 
   // Set up periodic pokemon fetch
-  /*
-  const pokemonFetchInterval = setInterval(() => {
-    const currentAppState = useAppStore.getState();
-    const currentPokemonStore = usePokemonStore.getState();
-
-    if (currentAppState.isOnline && !currentPokemonStore.isLoading && !currentPokemonStore.hasAllPokemon()) {
-      currentPokemonStore.fillCache();
-    } else if (currentPokemonStore.hasAllPokemon()) {
-      clearInterval(pokemonFetchInterval);
-    }
-  }, apiConfig.autoFetchInterval);
-
-*/
   setInterval(() => {
     fillCacheFunc(false);
   }, apiConfig.autoFetchInterval);

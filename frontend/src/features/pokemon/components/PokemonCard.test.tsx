@@ -30,14 +30,17 @@ describe('PokemonCard Component', () => {
         name: 'pikachu',
         height: 4,
         weight: 60,
-        baseExperience: 112,
-        stats: [
-            { name: 'hp', baseStat: 35 },
-            { name: 'attack', baseStat: 55 }
-        ],
+        hp: 35,
+        attack: 55,
+        defense: 40,
+        specialAttack: 50,
+        specialDefense: 50,
+        speed: 90,
         types: ['electric'],
-        imageUrl: 'https://example.com/pikachu.png',
-        spriteUrl: 'https://example.com/pikachu-sprite.png'
+        spriteUrl: 'https://example.com/pikachu-sprite.png',
+        officialArtworkUrl: 'https://example.com/pikachu-artwork.png',
+        isCaught: false,
+        firstAddedToPokedex: '2025-01-01T00:00:00.000Z'
     }
 
     it('should render Pokemon name', () => {
@@ -58,7 +61,7 @@ describe('PokemonCard Component', () => {
         expect(screen.getByText('Electric')).toBeInTheDocument()
     })
 
-    it('should render Pokemon image when imageUrl is provided', () => {
+    it('should render Pokemon image', () => {
         render(<PokemonCard pokemon={mockPokemon} />)
 
         const image = screen.getByRole('img', { name: /pikachu/i })
@@ -66,13 +69,13 @@ describe('PokemonCard Component', () => {
         expect(image).toHaveAttribute('src', mockPokemon.spriteUrl)
     })
 
-    it('should render fallback image when imageUrl is not provided', () => {
-        const pokemonWithoutImage = { ...mockPokemon, imageUrl: undefined }
-        render(<PokemonCard pokemon={pokemonWithoutImage} />)
+    it('should render fallback image when spriteUrl is not provided', () => {
+        const pokemonWithoutSprite = { ...mockPokemon, spriteUrl: '' }
+        render(<PokemonCard pokemon={pokemonWithoutSprite} />)
 
         const image = screen.getByRole('img', { name: /pikachu/i })
         expect(image).toBeInTheDocument()
-        expect(image).toHaveAttribute('src', mockPokemon.spriteUrl)
+        expect(image).toHaveAttribute('src', mockPokemon.officialArtworkUrl)
     })
 
     it('should handle Pokemon with multiple types', () => {

@@ -1,136 +1,390 @@
-import React, { useState, useEffect } from 'react';
-import { usePokedexStore } from '../stores/pokedexStore';
+import React, { useState, useEffect, useRef } from 'react';
+import { useCaughtPokemon } from '../stores/pokedexStore';
+import { usePokemonStore } from '../../pokemon/stores/pokemonStore';
+import { CaughtPokemonFiltersComponent } from '../components/CaughtPokemonFilters';
+import { PokedexProgress } from '../components/PokedexProgress';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { ErrorMessage } from '../../../components/ui/ErrorMessage';
-import { SearchIcon } from '../../../components/common/Icons';
+import { EmptyPokemonState } from '../../pokemon/components/EmptyPokemonState';
+import { PokemonCard } from '../../pokemon/components/PokemonCard';
+import type { CaughtPokemonFilters } from '../../../core/interfaces/PokemonFilters';
+
+type ViewMode = 'grid' | 'table';
 
 export const PokedexPage: React.FC = () => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState<'all' | 'favorites' | 'recent'>('all');
+    const [filters, setFilters] = useState<CaughtPokemonFilters>({
+        sortBy: 'caughtDate',
+        sortOrder: 'desc'
+    });
+    const [selectedPokemonIds, setSelectedPokemonIds] = useState<Set<number>>(new Set());
+    const [viewMode, setViewMode] = useState<ViewMode>('grid');
+    const [showBackToTop, setShowBackToTop] = useState(false);
+    const stickyControlsRef = useRef<HTMLDivElement>(null);
 
     const {
         caughtPokemon,
+        filteredPokemon,
         isLoading,
         error,
-        fetchCaughtPokemon
-    } = usePokedexStore();
+        loadCaughtPokemon,
+        toggleFavorite,
+        releaseBulkPokemon,
+        applyFilters
+    } = useCaughtPokemon();
+    const { updatePokemonCaughtStatus } = usePokemonStore();
 
     useEffect(() => {
-        fetchCaughtPokemon();
-    }, [fetchCaughtPokemon]);
+        loadCaughtPokemon();
+    }, [loadCaughtPokemon]);
 
-    const filteredPokemon = caughtPokemon.filter(caughtPoke => {
-        const matchesSearch = caughtPoke.pokemon.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            caughtPoke.pokemon.id.toString().includes(searchTerm) ||
-            (caughtPoke.nickname && caughtPoke.nickname.toLowerCase().includes(searchTerm.toLowerCase()));
+    const handleFiltersChange = (newFilters: Partial<CaughtPokemonFilters>) => {
+        const updatedFilters = { ...filters, ...newFilters };
+        setFilters(updatedFilters);
+        applyFilters(updatedFilters);
+    };
 
-        if (filterType === 'favorites') {
-            return matchesSearch && caughtPoke.isFavorite;
+    const handleClearFilters = () => {
+        const defaultFilters: CaughtPokemonFilters = {
+            sortBy: 'caughtDate',
+            sortOrder: 'desc'
+        };
+        setFilters(defaultFilters);
+        applyFilters(defaultFilters);
+    };
+
+    const handlePokemonSelect = (pokemonId: number) => {
+        setSelectedPokemonIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(pokemonId)) {
+                newSet.delete(pokemonId);
+            } else {
+                newSet.add(pokemonId);
+            }
+            return newSet;
+        });
+    };
+
+    const handleBulkRelease = async () => {
+        if (selectedPokemonIds.size === 0) return;
+
+        try {
+            // Get the Pokemon IDs that will be released (we need their pokeApiIds for the Pokemon store)
+            const pokemonToRelease = Array.from(selectedPokemonIds).map(id => {
+                const caughtPokemon = filteredPokemon.find(cp => cp.id === id);
+                return caughtPokemon;
+            }).filter(Boolean);
+
+            // Release all selected Pokemon at once
+            await releaseBulkPokemon(Array.from(selectedPokemonIds));
+
+            // Update the Pokemon store to reflect that these Pokemon are no longer caught
+            pokemonToRelease.forEach(caughtPokemon => {
+                if (caughtPokemon) {
+                    updatePokemonCaughtStatus(caughtPokemon.pokemon.pokeApiId, false);
+                }
+            });
+
+            // Clear selection after releasing
+            setSelectedPokemonIds(new Set());
+        } catch (error) {
+            console.error('Failed to release selected Pokemon:', error);
         }
+    };
 
-        return matchesSearch;
-    });
+    const handleExportCSV = () => {
+        // Export selected Pokemon if any are selected, otherwise export all filtered Pokemon
+        const pokemonToExport = selectedPokemonIds.size > 0
+            ? filteredPokemon.filter(p => selectedPokemonIds.has(p.id))
+            : filteredPokemon;
 
-    if (error) {
-        return <ErrorMessage message={error} />;
-    }
+        const headers = ['ID', 'Pokemon Name', 'Types', 'Caught Date', 'Is Favorite', 'Notes'];
+        const rows = pokemonToExport.map(caughtPokemon => [
+            caughtPokemon.id,
+            caughtPokemon.pokemon.name,
+            caughtPokemon.pokemon.types.join(', '),
+            new Date(caughtPokemon.caughtDate).toLocaleDateString(),
+            caughtPokemon.isFavorite ? 'Yes' : 'No',
+            caughtPokemon.notes || ''
+        ]);
+
+        const csvContent = [headers, ...rows]
+            .map(row => row.map(field => `"${field}"`).join(','))
+            .join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+
+        const filename = selectedPokemonIds.size > 0
+            ? `pokemon_selection_${selectedPokemonIds.size}.csv`
+            : 'pokemon_data.csv';
+        link.setAttribute('download', filename);
+
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // Track scroll position to show/hide back to top button
+    useEffect(() => {
+        const handleScroll = () => {
+            if (stickyControlsRef.current) {
+                const rect = stickyControlsRef.current.getBoundingClientRect();
+                // Show back to top button when sticky controls are stuck (top position equals navbar height)
+                setShowBackToTop(rect.top <= 64); // 64px is the navbar height (h-16)
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">My Pokedex</h1>
-                <p className="mt-2 text-gray-600">
-                    View and manage your caught Pokemon collection
+            {/* Hero Section */}
+            <div className="text-center mb-8">
+                <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                    Your Pokédex
+                </h2>
+                <p className="text-lg text-gray-600 mb-6">
+                    View and manage your caught Pokémon collection. Track favorites, add notes, and export your data.
                 </p>
             </div>
 
+            {/* Progress Bar and Stats */}
+            <PokedexProgress isLoading={isLoading} />
+
             {/* Search and Filters */}
-            <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                    {/* Search */}
-                    <div className="flex-1">
-                        <div className="relative">
-                            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search your Pokemon..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
+            <CaughtPokemonFiltersComponent
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+                onClearFilters={handleClearFilters}
+            />
+
+            {/* View Mode Controls - Sticky */}
+            <div
+                ref={stickyControlsRef}
+                className="sticky top-16 z-40 py-4 mb-6 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 transition-all duration-200"
+            >
+                <div className="flex justify-between items-center">
+                    <div className="flex bg-gray-100 rounded-lg p-1">
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Grid View
+                        </button>
+                        <button
+                            onClick={() => setViewMode('table')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${viewMode === 'table'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                        >
+                            Table View
+                        </button>
                     </div>
 
-                    {/* Filter Tabs */}
-                    <div className="flex bg-gray-100 rounded-md p-1">
+                    <div className="flex gap-3">
+                        {selectedPokemonIds.size > 0 && (
+                            <button
+                                onClick={handleBulkRelease}
+                                className="px-6 py-2 rounded-lg font-medium transition-colors bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+                            >
+                                Release ({selectedPokemonIds.size})
+                            </button>
+                        )}
+
                         <button
-                            onClick={() => setFilterType('all')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filterType === 'all'
-                                    ? 'bg-white text-blue-600 shadow-sm'
-                                    : 'text-gray-600 hover:text-gray-900'
-                                }`}
+                            onClick={handleExportCSV}
+                            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
                         >
-                            All ({caughtPokemon.length})
+                            {selectedPokemonIds.size > 0
+                                ? `Export Selection (${selectedPokemonIds.size})`
+                                : 'Export CSV'
+                            }
                         </button>
-                        <button
-                            onClick={() => setFilterType('favorites')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filterType === 'favorites'
-                                    ? 'bg-white text-red-600 shadow-sm'
-                                    : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                        >
-                            ♥ Favorites ({caughtPokemon.filter(p => p.isFavorite).length})
-                        </button>
+
+                        {showBackToTop && (
+                            <button
+                                onClick={scrollToTop}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"
+                                title="Back to top"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                                </svg>
+                                Top
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Pokemon Grid */}
+            {/* Content based on loading/error states */}
             {isLoading ? (
-                <div className="flex justify-center py-12">
+                <div className="flex justify-center items-center h-64">
                     <LoadingSpinner />
                 </div>
-            ) : filteredPokemon.length === 0 ? (
-                <div className="bg-white rounded-lg shadow p-12 text-center">
-                    <p className="text-gray-600 text-lg">
-                        {searchTerm
-                            ? `No Pokemon found matching "${searchTerm}"`
-                            : filterType === 'favorites'
-                                ? "No favorite Pokemon yet. Mark some Pokemon as favorites!"
-                                : "Your Pokedex is empty. Start catching Pokemon to build your collection!"
-                        }
-                    </p>
+            ) : error ? (
+                <div className="text-center py-12">
+                    <ErrorMessage message={error} />
                 </div>
+            ) : filteredPokemon.length === 0 ? (
+                <EmptyPokemonState
+                    title={caughtPokemon.length === 0
+                        ? "You haven't caught any Pokémon yet!"
+                        : "No Pokémon match your current filters."
+                    }
+                    subtitle={caughtPokemon.length === 0
+                        ? "Start catching Pokémon to build your collection!"
+                        : undefined
+                    }
+                    showHint={caughtPokemon.length > 0}
+                />
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredPokemon.map(caughtPoke => (
-                        <div key={caughtPoke.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-4">
-                            <div className="text-center">
-                                <div className="text-sm text-gray-500 mb-1">#{caughtPoke.pokemon.id}</div>
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                    {caughtPoke.nickname || caughtPoke.pokemon.name}
-                                </h3>
-                                {caughtPoke.nickname && (
-                                    <div className="text-sm text-gray-500 mb-2">
-                                        ({caughtPoke.pokemon.name})
-                                    </div>
-                                )}
-                                <div className="text-sm text-gray-600">
-                                    Caught: {new Date(caughtPoke.caughtAt).toLocaleDateString()}
+                <div className="space-y-6">
+                    {/* Results count */}
+                    <div className="text-sm text-gray-600">
+                        Showing {filteredPokemon.length} of {caughtPokemon.length} caught Pokémon
+                    </div>
+
+                    {/* Pokemon Grid/List */}
+                    {viewMode === 'grid' ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                            {filteredPokemon.map((caughtPokemon) => (
+                                <div key={caughtPokemon.id} className="relative">
+                                    {/* Use PokemonCard component with selection and favorite */}
+                                    <PokemonCard
+                                        pokemon={caughtPokemon.pokemon}
+                                        className="h-full"
+                                        showCatchButton={false}
+                                        showReleaseButton={false}
+                                        isSelected={selectedPokemonIds.has(caughtPokemon.id)}
+                                        onSelect={() => handlePokemonSelect(caughtPokemon.id)}
+                                        sortBy={filters.sortBy}
+                                        caughtDate={caughtPokemon.caughtDate}
+                                        notes={caughtPokemon.notes}
+                                        isFavorite={caughtPokemon.isFavorite}
+                                        onToggleFavorite={() => toggleFavorite(caughtPokemon.id)}
+                                        showCaughtIndicator={false}
+                                    />
                                 </div>
-                                {caughtPoke.isFavorite && (
-                                    <div className="text-red-500 text-lg mt-2">♥</div>
-                                )}
-                                {caughtPoke.notes && (
-                                    <div className="mt-2 text-sm text-gray-600 bg-gray-50 rounded p-2">
-                                        {caughtPoke.notes}
-                                    </div>
-                                )}
+                            ))}
+                        </div>
+                    ) : (
+                        /* Table view */
+                        <div className="bg-white rounded-lg border overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedPokemonIds.size === filteredPokemon.length && filteredPokemon.length > 0}
+                                                    onChange={() => {
+                                                        if (selectedPokemonIds.size === filteredPokemon.length) {
+                                                            setSelectedPokemonIds(new Set());
+                                                        } else {
+                                                            setSelectedPokemonIds(new Set(filteredPokemon.map(p => p.id)));
+                                                        }
+                                                    }}
+                                                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                />
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Pokémon
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Types
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Caught Date
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Notes
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {filteredPokemon.map((caughtPokemon) => (
+                                            <tr key={caughtPokemon.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedPokemonIds.has(caughtPokemon.id)}
+                                                        onChange={() => handlePokemonSelect(caughtPokemon.id)}
+                                                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <img
+                                                            src={caughtPokemon.pokemon.spriteUrl}
+                                                            alt={caughtPokemon.pokemon.name}
+                                                            className="w-12 h-12 object-contain mr-4"
+                                                        />
+                                                        <div>
+                                                            <div className="text-sm font-medium text-gray-900 capitalize">
+                                                                {caughtPokemon.pokemon.name}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex gap-1">
+                                                        {caughtPokemon.pokemon.types.map((type) => (
+                                                            <span
+                                                                key={type}
+                                                                className={`px-2 py-1 rounded text-xs font-medium text-white bg-${type}-500`}
+                                                            >
+                                                                {type}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {new Date(caughtPokemon.caughtDate).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                    <div className="max-w-xs truncate">
+                                                        {caughtPokemon.notes || '-'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() => toggleFavorite(caughtPokemon.id)}
+                                                        className="text-red-600 hover:text-red-900 mr-4"
+                                                    >
+                                                        <span className={caughtPokemon.isFavorite ? 'text-red-500' : 'text-gray-300'}>
+                                                            ♥
+                                                        </span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                    ))}
+                    )}
                 </div>
             )}
         </div>
     );
 };
+
+export default PokedexPage;

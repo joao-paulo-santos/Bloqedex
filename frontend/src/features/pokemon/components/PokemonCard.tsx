@@ -12,6 +12,11 @@ interface PokemonCardProps {
     sortBy?: PokemonFilters['sortBy'];
     isSelected?: boolean;
     onSelect?: () => void;
+    caughtDate?: string;
+    notes?: string;
+    isFavorite?: boolean;
+    onToggleFavorite?: () => void;
+    showCaughtIndicator?: boolean;
 }
 
 export const PokemonCard: React.FC<PokemonCardProps> = ({
@@ -23,17 +28,17 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
     className = '',
     sortBy,
     isSelected = false,
-    onSelect
+    onSelect,
+    caughtDate,
+    notes,
+    isFavorite,
+    onToggleFavorite,
+    showCaughtIndicator = true
 }) => {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    // Debug: Log the entire pokemon object
-    //console.log('PokemonCard received pokemon:', pokemon);
-    //console.log('Pokemon name:', pokemon?.name);
-    //console.log('Pokemon attack:', pokemon?.attack);
-
     const getTypeColor = (typeName: string): string => {
         if (!typeName) {
-            return 'bg-gray-500'; // Default color for undefined types
+            return 'bg-gray-500';
         }
 
         const typeColors: Record<string, string> = {
@@ -63,16 +68,14 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
         return name.charAt(0).toUpperCase() + name.slice(1);
     };
 
-    const getSortValue = (): { label: string; value: string | number } | null => {
-        if (!sortBy || sortBy === 'pokeApiId') return null; // Don't show for default sort
+    const getSortValue = (): { label: string; value: string | number; notes?: string } | null => {
+        if (!sortBy || sortBy === 'pokeApiId') return null;
 
         switch (sortBy) {
             case 'height':
                 return { label: 'Height', value: `${pokemon.height / 10}m` };
             case 'weight':
                 return { label: 'Weight', value: `${pokemon.weight / 10}kg` };
-            case 'baseExperience':
-                return { label: 'Base Exp', value: pokemon.baseExperience || 0 };
             case 'hp':
                 return { label: 'HP', value: pokemon.hp || 0 };
             case 'attack':
@@ -90,10 +93,14 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                     (pokemon.specialAttack || 0) + (pokemon.specialDefense || 0) + (pokemon.speed || 0);
                 return { label: 'Total Stats', value: total };
             }
-            case 'caughtAt':
-                return pokemon.caughtAt ? { label: 'Caught', value: new Date(pokemon.caughtAt).toLocaleDateString() } : null;
             case 'firstAddedToPokedex':
                 return pokemon.firstAddedToPokedex ? { label: 'Added', value: new Date(pokemon.firstAddedToPokedex).toLocaleDateString() } : null;
+            case 'caughtDate':
+                return caughtDate ? {
+                    label: 'Caught',
+                    value: new Date(caughtDate).toLocaleDateString(),
+                    notes: notes
+                } : null;
             default:
                 return null;
         }
@@ -109,9 +116,9 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
         >
             {/* Pokemon Image */}
             <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-                {pokemon.officialArtworkUrl || pokemon.spriteUrl || pokemon.imageUrl ? (
+                {pokemon.officialArtworkUrl || pokemon.spriteUrl ? (
                     <img
-                        src={pokemon.officialArtworkUrl || pokemon.spriteUrl || pokemon.imageUrl}
+                        src={pokemon.officialArtworkUrl || pokemon.spriteUrl}
                         alt={pokemon.name}
                         className="w-full h-full object-contain"
                         loading="lazy"
@@ -130,7 +137,7 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                 </div>
 
                 {/* Caught Indicator */}
-                {pokemon.isCaught && (
+                {showCaughtIndicator && pokemon.isCaught && (
                     <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
                         Caught
                     </div>
@@ -139,9 +146,24 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
 
             {/* Pokemon Info */}
             <div className="p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {formatName(pokemon.name)}
-                </h3>
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                        {formatName(pokemon.name)}
+                    </h3>
+                    {onToggleFavorite && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleFavorite();
+                            }}
+                            className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                        >
+                            <span className={`text-lg ${isFavorite ? 'text-red-500' : 'text-gray-300'}`}>
+                                ♥
+                            </span>
+                        </button>
+                    )}
+                </div>
 
                 {/* Sort Value Display */}
                 {sortValue && (
@@ -150,6 +172,11 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                             <span className="text-xs font-medium text-blue-700">{sortValue.label}:</span>
                             <span className="text-sm font-semibold text-blue-800">{sortValue.value}</span>
                         </div>
+                        {sortValue.notes && (
+                            <div className="mt-1 text-xs text-blue-600">
+                                Note: {sortValue.notes}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -233,9 +260,9 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
 
                                 {/* Pokemon Image */}
                                 <div className="flex justify-center mb-4">
-                                    {pokemon.officialArtworkUrl || pokemon.spriteUrl || pokemon.imageUrl ? (
+                                    {pokemon.officialArtworkUrl || pokemon.spriteUrl ? (
                                         <img
-                                            src={pokemon.officialArtworkUrl || pokemon.spriteUrl || pokemon.imageUrl}
+                                            src={pokemon.officialArtworkUrl || pokemon.spriteUrl}
                                             alt={pokemon.name}
                                             className="w-32 h-32 object-contain"
                                         />
@@ -275,12 +302,6 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                                             <span className="text-gray-600">Weight:</span>
                                             <span className="font-medium">{pokemon.weight / 10}kg</span>
                                         </div>
-                                        {pokemon.baseExperience && (
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Base Exp:</span>
-                                                <span className="font-medium">{pokemon.baseExperience}</span>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
 
@@ -339,7 +360,7 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                                 )}
 
                                 {/* User Data */}
-                                {(pokemon.isCaught || pokemon.caughtAt || pokemon.firstAddedToPokedex) && (
+                                {(pokemon.isCaught || pokemon.firstAddedToPokedex) && (
                                     <div className="mb-4">
                                         <h3 className="text-sm font-medium text-gray-700 mb-2">Your Data</h3>
                                         <div className="space-y-2 text-sm">
@@ -347,12 +368,6 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                                                 <div className="flex justify-between">
                                                     <span className="text-gray-600">Status:</span>
                                                     <span className="font-medium text-green-600">Caught</span>
-                                                </div>
-                                            )}
-                                            {pokemon.caughtAt && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Caught Date:</span>
-                                                    <span className="font-medium">{new Date(pokemon.caughtAt).toLocaleDateString()}</span>
                                                 </div>
                                             )}
                                             {pokemon.firstAddedToPokedex && (

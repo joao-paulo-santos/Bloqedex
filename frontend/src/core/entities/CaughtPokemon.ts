@@ -2,11 +2,9 @@ import type { Pokemon } from './Pokemon';
 
 export interface CaughtPokemon {
     id: number;
-    pokemonId: number;
+    userId: number;
     pokemon: Pokemon;
-    userId: number | string;
-    caughtAt: string;
+    caughtDate: string;
     notes?: string;
     isFavorite: boolean;
-    nickname?: string;
 }

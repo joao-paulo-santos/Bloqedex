@@ -8,9 +8,6 @@ export interface PokemonFilters {
     typesAll?: string[]; // Must have all
     excludeTypes?: string[]; // Must not haves
 
-    minBaseExperience?: number;
-    maxBaseExperience?: number;
-
     // Battle stats filters
     minSpecialAttack?: number;
     maxSpecialAttack?: number;
@@ -27,8 +24,15 @@ export interface PokemonFilters {
     uncaughtOnly?: boolean;
     favoritesOnly?: boolean;
 
-    sortBy?: 'name' | 'pokeApiId' | 'height' | 'weight' | 'baseExperience' |
+    sortBy?: 'name' | 'pokeApiId' | 'height' | 'weight' |
     'hp' | 'attack' | 'defense' | 'specialAttack' | 'specialDefense' |
-    'speed' | 'totalStats' | 'caughtAt' | 'firstAddedToPokedex';
+    'speed' | 'totalStats' | 'firstAddedToPokedex' |
+    'caughtDate';
     sortOrder?: 'asc' | 'desc';
+}
+
+export interface CaughtPokemonFilters extends PokemonFilters {
+    // Caught-specific filters
+    caughtDateFrom?: string; // ISO date string
+    caughtDateTo?: string; // ISO date string
 }

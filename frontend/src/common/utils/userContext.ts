@@ -17,6 +17,16 @@ export function getCurrentUserId(): number | string | null {
     }
 }
 
+export function isOfflineAccount(): boolean {
+    try {
+        const persistedState = JSON.parse(localStorage.getItem('bloqedex-auth-storage') || '{}');
+        return persistedState?.state?.isOfflineAccount === true;
+    } catch (error) {
+        console.error('Failed to check if offline account:', error);
+        return false;
+    }
+}
+
 export function getUserIdFromToken(token: string): number | string | null {
     if (token.startsWith('offline_')) {
         return token;

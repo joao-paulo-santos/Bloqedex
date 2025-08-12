@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useAppStore } from '../../../stores';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
@@ -18,14 +18,27 @@ export const RegisterDialog: React.FC<RegisterDialogProps> = ({ isOpen, onClose,
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const { register, registerOffline, isOfflineAccount } = useAuthStore();
+    const { register, registerOffline, convertOfflineToOnline, isOfflineAccount, user } = useAuthStore();
     const { isOnline } = useAppStore();
+
+    useEffect(() => {
+        if (isOpen) {
+            setUsername('');
+            setEmail('');
+            setPassword('');
+            setConfirmPassword('');
+            setError('');
+
+            if (isOfflineAccount && user && isOnline) {
+                setUsername(user.username);
+            }
+        }
+    }, [isOpen, isOfflineAccount, user, isOnline]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
-        // Only validate password when online
         if (isOnline) {
             if (password !== confirmPassword) {
                 setError('Passwords do not match');
@@ -42,16 +55,15 @@ export const RegisterDialog: React.FC<RegisterDialogProps> = ({ isOpen, onClose,
 
         try {
             if (isOnline) {
-                await register(username, email, password);
+                if (isOfflineAccount) {
+                    await convertOfflineToOnline(username, email, password);
+                } else {
+                    await register(username, email, password);
+                }
             } else {
                 await registerOffline(username, email);
             }
             onClose();
-            // Reset form
-            setUsername('');
-            setEmail('');
-            setPassword('');
-            setConfirmPassword('');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Registration failed');
         } finally {

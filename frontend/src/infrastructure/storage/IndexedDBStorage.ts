@@ -1,4 +1,4 @@
-import type { Pokemon, CaughtPokemon, User } from '../../core/entities';
+import type { Pokemon, CaughtPokemon, User, PokedexStats } from '../../core/entities';
 import type { OfflineAction, IOfflineStorage } from '../../core/interfaces';
 import { getLastConsecutiveIdFromIds } from '../../common/utils/pokemonHelpers';
 
@@ -12,7 +12,7 @@ interface PendingAccount {
 
 export class IndexedDBStorage implements IOfflineStorage {
     private dbName = 'BloqedexDB';
-    private dbVersion = 2;
+    private dbVersion = 4;
     private db: IDBDatabase | null = null;
     private pokemonIdsCache: Set<number> | null = null;
 
@@ -29,38 +29,34 @@ export class IndexedDBStorage implements IOfflineStorage {
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
 
+                // Pokemon store
                 if (!db.objectStoreNames.contains('pokemon')) {
                     const pokemonStore = db.createObjectStore('pokemon', { keyPath: 'id' });
                     pokemonStore.createIndex('pokeApiId', 'pokeApiId', { unique: false });
                     pokemonStore.createIndex('name', 'name', { unique: false });
                 }
 
+                // Caught Pokemon store
                 if (!db.objectStoreNames.contains('caughtPokemon')) {
                     const caughtStore = db.createObjectStore('caughtPokemon', { keyPath: 'id' });
-                    caughtStore.createIndex('pokemonId', 'pokemonId', { unique: false });
-                    caughtStore.createIndex('caughtAt', 'caughtAt', { unique: false });
+                    caughtStore.createIndex('pokemonId', 'pokemon.id', { unique: false });
+                    caughtStore.createIndex('caughtDate', 'caughtDate', { unique: false });
                     caughtStore.createIndex('userId', 'userId', { unique: false });
-                } else {
-                    // Add userId index to existing store if it doesn't exist
-                    const transaction = (event.target as IDBOpenDBRequest).transaction;
-                    if (transaction) {
-                        const caughtStore = transaction.objectStore('caughtPokemon');
-                        if (!caughtStore.indexNames.contains('userId')) {
-                            caughtStore.createIndex('userId', 'userId', { unique: false });
-                        }
-                    }
                 }
 
+                // Users store
                 if (!db.objectStoreNames.contains('users')) {
                     db.createObjectStore('users', { keyPath: 'id' });
                 }
 
+                // Offline actions store
                 if (!db.objectStoreNames.contains('offlineActions')) {
                     const actionsStore = db.createObjectStore('offlineActions', { keyPath: 'id' });
                     actionsStore.createIndex('timestamp', 'timestamp', { unique: false });
                     actionsStore.createIndex('status', 'status', { unique: false });
                 }
 
+                // Pending accounts store
                 if (!db.objectStoreNames.contains('pendingAccounts')) {
                     const pendingAccountsStore = db.createObjectStore('pendingAccounts', { keyPath: 'id' });
                     pendingAccountsStore.createIndex('email', 'email', { unique: true });
@@ -114,18 +110,26 @@ export class IndexedDBStorage implements IOfflineStorage {
         });
     }
 
+    async deletePendingAction(actionId: string): Promise<void> {
+        if (!this.db) await this.init();
+
+        const transaction = this.db!.transaction(['offlineActions'], 'readwrite');
+        const store = transaction.objectStore('offlineActions');
+
+        return new Promise((resolve, reject) => {
+            const request = store.delete(actionId);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+
     async syncWhenOnline(): Promise<void> {
         const isOnline = await this.isOnline();
         if (!isOnline) return;
 
-        const pendingActions = await this.getPendingActions();
-
-        // TODO: Implement sync logic with API
-        console.log('Syncing pending actions:', pendingActions);
     }
 
     async savePokemon(pokemon: Pokemon): Promise<void> {
-        console.log("saving pokemon", pokemon);
         if (!this.db) await this.init();
 
         const transaction = this.db!.transaction(['pokemon'], 'readwrite');
@@ -151,6 +155,20 @@ export class IndexedDBStorage implements IOfflineStorage {
 
         return new Promise((resolve, reject) => {
             const request = store.get(id);
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getPokemonByPokeApiId(pokeApiId: number): Promise<Pokemon | null> {
+        if (!this.db) await this.init();
+
+        const transaction = this.db!.transaction(['pokemon'], 'readonly');
+        const store = transaction.objectStore('pokemon');
+        const index = store.index('pokeApiId');
+
+        return new Promise((resolve, reject) => {
+            const request = index.get(pokeApiId);
             request.onsuccess = () => resolve(request.result || null);
             request.onerror = () => reject(request.error);
         });
@@ -346,12 +364,126 @@ export class IndexedDBStorage implements IOfflineStorage {
 
         return new Promise((resolve, reject) => {
             if (userId) {
-                // Filter by userId using the index
-                const index = store.index('userId');
-                const request = index.getAll(userId);
-                request.onsuccess = () => resolve(request.result);
+                // Check if the userId index exists before trying to use it
+                try {
+                    if (store.indexNames.contains('userId')) {
+                        // Filter by userId using the index
+                        const index = store.index('userId');
+                        const request = index.getAll(userId);
+                        request.onsuccess = () => {
+                            const result = request.result;
+                            const uniquePokemon = this.removeDuplicatesByPokeApiId(result);
+                            resolve(uniquePokemon);
+                        };
+                        request.onerror = () => reject(request.error);
+                    } else {
+                        // Fallback: get all and filter manually
+                        console.warn('userId index not found, filtering manually');
+                        const request = store.getAll();
+                        request.onsuccess = () => {
+                            const allItems = request.result;
+                            const filtered = allItems.filter((item: CaughtPokemon) => item.userId === userId);
+                            const uniquePokemon = this.removeDuplicatesByPokeApiId(filtered);
+                            resolve(uniquePokemon);
+                        };
+                        request.onerror = () => reject(request.error);
+                    }
+                } catch (error) {
+                    console.error('Error accessing userId index:', error);
+                    // Fallback: get all and filter manually
+                    const request = store.getAll();
+                    request.onsuccess = () => {
+                        const allItems = request.result;
+                        const filtered = allItems.filter((item: CaughtPokemon) => item.userId === userId);
+                        const uniquePokemon = this.removeDuplicatesByPokeApiId(filtered);
+                        resolve(uniquePokemon);
+                    };
+                    request.onerror = () => reject(request.error);
+                }
+            } else {
+                // Get all caught Pokemon
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    const result = request.result;
+                    const uniquePokemon = this.removeDuplicatesByPokeApiId(result);
+                    resolve(uniquePokemon);
+                };
                 request.onerror = () => reject(request.error);
             }
+        });
+    }
+
+    private removeDuplicatesByPokeApiId(caughtPokemon: CaughtPokemon[]): CaughtPokemon[] {
+        const seen = new Map<number, CaughtPokemon>();
+
+        for (const pokemon of caughtPokemon) {
+            const pokeApiId = pokemon.pokemon.pokeApiId;
+            const existing = seen.get(pokeApiId);
+
+            if (!existing || pokemon.id < existing.id) {
+                seen.set(pokeApiId, pokemon);
+            }
+        }
+
+        return Array.from(seen.values());
+    }
+
+    async cleanupDuplicateCaughtPokemon(userId?: number | string): Promise<void> {
+        if (!this.db) await this.init();
+
+        const transaction = this.db!.transaction(['caughtPokemon'], 'readwrite');
+        const store = transaction.objectStore('caughtPokemon');
+
+        return new Promise((resolve, reject) => {
+            // Get all caught Pokemon for the user
+            let request: IDBRequest;
+            if (userId && store.indexNames.contains('userId')) {
+                const index = store.index('userId');
+                request = index.getAll(userId);
+            } else {
+                request = store.getAll();
+            }
+
+            request.onsuccess = async () => {
+                try {
+                    let allPokemon = request.result as CaughtPokemon[];
+
+                    if (userId && !store.indexNames.contains('userId')) {
+                        allPokemon = allPokemon.filter(p => p.userId === userId);
+                    }
+
+                    const grouped = new Map<number, CaughtPokemon[]>();
+                    for (const pokemon of allPokemon) {
+                        const pokeApiId = pokemon.pokemon.pokeApiId;
+                        if (!grouped.has(pokeApiId)) {
+                            grouped.set(pokeApiId, []);
+                        }
+                        grouped.get(pokeApiId)!.push(pokemon);
+                    }
+
+                    for (const [, duplicates] of grouped) {
+                        if (duplicates.length > 1) {
+                            duplicates.sort((a, b) => a.id - b.id);
+                            const toDelete = duplicates.slice(1);
+
+                            for (const duplicate of toDelete) {
+                                const deleteReq = store.delete(duplicate.id);
+                                await new Promise<void>((resolveDelete, rejectDelete) => {
+                                    deleteReq.onsuccess = () => resolveDelete();
+                                    deleteReq.onerror = () => rejectDelete(deleteReq.error);
+                                });
+                            }
+
+                        }
+                    }
+
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            };
+
+            request.onerror = () => reject(request.error);
         });
     }
 
@@ -363,8 +495,13 @@ export class IndexedDBStorage implements IOfflineStorage {
 
         return new Promise((resolve, reject) => {
             const request = store.delete(id);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                resolve();
+            };
+            request.onerror = () => {
+                console.error('IndexedDB: Failed to delete Pokemon with ID:', id, 'Error:', request.error);
+                reject(request.error);
+            };
         });
     }
 
@@ -473,6 +610,31 @@ export class IndexedDBStorage implements IOfflineStorage {
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
         });
+    }
+
+    async getFavorites(userId?: number | string): Promise<CaughtPokemon[]> {
+        const allCaught = await this.getCaughtPokemon(userId);
+        return allCaught.filter(pokemon => pokemon.isFavorite);
+    }
+
+    async getPokedexStats(userId?: number | string): Promise<PokedexStats> {
+        const allCaught = await this.getCaughtPokemon(userId);
+        const totalCaught = allCaught.length;
+        const totalFavorites = allCaught.filter(pokemon => pokemon.isFavorite).length;
+
+        // Calculate unique species caught
+        const uniqueSpecies = new Set(allCaught.map(pokemon => pokemon.pokemon.id)).size;
+
+        // Assuming there are 1010 Pokemon total (as of recent generations)
+        const totalAvailable = 1010;
+        const completionPercentage = totalAvailable > 0 ? (uniqueSpecies / totalAvailable) * 100 : 0;
+
+        return {
+            totalCaught,
+            totalFavorites,
+            completionPercentage,
+            totalAvailable
+        };
     }
 }
 

@@ -33,7 +33,6 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
     useEffect(() => {
         // Get filtered Pokemon array from store using custom filters
         const filtered = getFilteredPokemon(customFilters);
-        console.log('Filtered Pokemon:', filtered.length);
         setDisplayedPokemon(filtered);
     }, [pokemonMap, getFilteredPokemon, customFilters]);
 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePokemonStore } from '../stores/pokemonStore';
 import { useAuthStore } from '../../auth/stores/authStore';
+import { usePokedexStore } from '../../pokedex/stores/pokedexStore';
 import { PokemonGrid } from '../components/PokemonGrid';
 import { PokemonTable } from '../components/PokemonTable';
 import { PokemonFiltersComponent } from '../components/PokemonFilters';
+import { toastEvents } from '../../../common/utils/eventBus';
 import type { PokemonFilters } from '../../../core/interfaces';
 
 type ViewMode = 'grid' | 'table';
@@ -16,11 +18,12 @@ export const HomePage: React.FC = () => {
     const [selectedPokemonIds, setSelectedPokemonIds] = useState<Set<number>>(new Set());
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
     const [showBackToTop, setShowBackToTop] = useState(false);
+    const [isCatchingPokemon, setIsCatchingPokemon] = useState(false);
     const stickyControlsRef = useRef<HTMLDivElement>(null);
 
-    //const isOnline = useAppStore(state => state.isOnline);
-    const { setFilters: setStoreFilters, getFilteredPokemon } = usePokemonStore();
+    const { setFilters: setStoreFilters, getFilteredPokemon, updatePokemonCaughtStatus } = usePokemonStore();
     const { isAuthenticated } = useAuthStore();
+    const { catchBulkPokemon } = usePokedexStore();
 
     const handleFiltersChange = (newFilters: Partial<PokemonFilters>) => {
         const updatedFilters = { ...filters, ...newFilters };
@@ -52,11 +55,70 @@ export const HomePage: React.FC = () => {
     const handleBulkCatch = async () => {
         if (!isAuthenticated || selectedPokemonIds.size === 0) return;
 
-        // TODO: Implement bulk catch logic
-        console.log('Catching Pokemon:', Array.from(selectedPokemonIds));
+        const allSelectedIds = Array.from(selectedPokemonIds);
 
-        // Clear selection after catching
-        setSelectedPokemonIds(new Set());
+        const uncaughtIds = allSelectedIds.filter(pokemonId => {
+            const pokemon = getFilteredPokemon().find(p => p.pokeApiId === pokemonId);
+            return pokemon && !pokemon.isCaught;
+        });
+
+        const alreadyCaughtCount = allSelectedIds.length - uncaughtIds.length;
+
+        if (uncaughtIds.length === 0) {
+            toastEvents.showInfo('All selected Pokemon are already caught!');
+            return;
+        }
+
+        if (alreadyCaughtCount > 0) {
+            toastEvents.showInfo(`${alreadyCaughtCount} Pokemon were already caught and will be skipped.`);
+        }
+
+        setIsCatchingPokemon(true);
+
+        try {
+            await catchBulkPokemon(uncaughtIds);
+
+            uncaughtIds.forEach(pokemonId => {
+                updatePokemonCaughtStatus(pokemonId, true);
+            });
+
+            setSelectedPokemonIds(new Set());
+
+            if (alreadyCaughtCount > 0) {
+                toastEvents.showSuccess(`Successfully caught ${uncaughtIds.length} new Pokemon! (${alreadyCaughtCount} were already caught)`);
+            } else {
+                toastEvents.showSuccess(`Successfully caught ${uncaughtIds.length} Pokemon!`);
+            }
+
+        } catch (error) {
+            console.error('Failed to catch Pokemon:', error);
+            toastEvents.showError('Failed to catch some Pokemon. Please try again.');
+        } finally {
+            setIsCatchingPokemon(false);
+        }
+    };
+
+    const getUncaughtSelectedCount = () => {
+        const allSelectedIds = Array.from(selectedPokemonIds);
+        return allSelectedIds.filter(pokemonId => {
+            const pokemon = getFilteredPokemon().find(p => p.pokeApiId === pokemonId);
+            return pokemon && !pokemon.isCaught;
+        }).length;
+    };
+
+    const getCatchButtonText = () => {
+        if (isCatchingPokemon) return 'Catching...';
+
+        const uncaughtCount = getUncaughtSelectedCount();
+        const totalSelected = selectedPokemonIds.size;
+
+        if (uncaughtCount === totalSelected) {
+            return `Catch (${uncaughtCount})`;
+        } else if (uncaughtCount === 0) {
+            return `All Selected Already Caught (${totalSelected})`;
+        } else {
+            return `Catch ${uncaughtCount} (${totalSelected - uncaughtCount} already caught)`;
+        }
     };
 
     const handleExportCSV = () => {
@@ -69,8 +131,8 @@ export const HomePage: React.FC = () => {
 
         const headers = [
             'ID', 'Name', 'Type 1', 'Type 2', 'Height (m)', 'Weight (kg)',
-            'Base Experience', 'HP', 'Attack', 'Defense', 'Special Attack',
-            'Special Defense', 'Speed', 'Total Stats', 'Caught', 'Catch Date'
+            'HP', 'Attack', 'Defense', 'Special Attack',
+            'Special Defense', 'Speed', 'Total Stats', 'Caught'
         ];
 
         const rows = pokemonToExport.map(pokemon => [
@@ -80,7 +142,6 @@ export const HomePage: React.FC = () => {
             pokemon.types?.[1] || '',
             pokemon.height ? (pokemon.height / 10).toFixed(1) : '',
             pokemon.weight ? (pokemon.weight / 10).toFixed(1) : '',
-            pokemon.baseExperience || '',
             pokemon.hp || '',
             pokemon.attack || '',
             pokemon.defense || '',
@@ -89,8 +150,7 @@ export const HomePage: React.FC = () => {
             pokemon.speed || '',
             (pokemon.hp || 0) + (pokemon.attack || 0) + (pokemon.defense || 0) +
             (pokemon.specialAttack || 0) + (pokemon.specialDefense || 0) + (pokemon.speed || 0) || '',
-            pokemon.isCaught ? 'Yes' : 'No',
-            pokemon.caughtAt ? new Date(pokemon.caughtAt).toLocaleDateString() : ''
+            pokemon.isCaught ? 'Yes' : 'No'
         ]);
 
         const csvContent = [headers, ...rows]
@@ -113,13 +173,11 @@ export const HomePage: React.FC = () => {
         document.body.removeChild(link);
     };
 
-    // Track scroll position to show/hide back to top button
     useEffect(() => {
         const handleScroll = () => {
             if (stickyControlsRef.current) {
                 const rect = stickyControlsRef.current.getBoundingClientRect();
-                // Show back to top button when sticky controls are stuck (top position equals navbar height)
-                setShowBackToTop(rect.top <= 64); // 64px is the navbar height (h-16)
+                setShowBackToTop(rect.top <= 64);
             }
         };
 
@@ -182,13 +240,13 @@ export const HomePage: React.FC = () => {
                         {selectedPokemonIds.size > 0 && (
                             <button
                                 onClick={handleBulkCatch}
-                                disabled={!isAuthenticated}
-                                className={`px-6 py-2 rounded-lg font-medium transition-colors ${isAuthenticated
+                                disabled={!isAuthenticated || isCatchingPokemon || getUncaughtSelectedCount() === 0}
+                                className={`px-6 py-2 rounded-lg font-medium transition-colors ${isAuthenticated && !isCatchingPokemon && getUncaughtSelectedCount() > 0
                                     ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                     }`}
                             >
-                                Catch ({selectedPokemonIds.size})
+                                {getCatchButtonText()}
                             </button>
                         )}
 

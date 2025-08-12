@@ -20,10 +20,12 @@ export interface IPokedexRepository {
     getCaughtPokemon(pageIndex?: number, pageSize?: number): Promise<PaginatedResponse<CaughtPokemon>>;
     getFavorites(): Promise<CaughtPokemon[]>;
     catchPokemon(pokemonId: number, notes?: string): Promise<CaughtPokemon | null>;
+    catchBulkPokemon(pokemonIds: number[], notes?: string): Promise<CaughtPokemon[]>;
     releasePokemon(caughtPokemonId: number): Promise<boolean>;
+    releaseBulkPokemon(caughtPokemonIds: number[]): Promise<number[]>;
     updateCaughtPokemon(
         caughtPokemonId: number,
-        updates: { notes?: string; isFavorite?: boolean; nickname?: string }
+        updates: { notes?: string; isFavorite?: boolean }
     ): Promise<CaughtPokemon | null>;
     getStats(): Promise<PokedexStats | null>;
 }

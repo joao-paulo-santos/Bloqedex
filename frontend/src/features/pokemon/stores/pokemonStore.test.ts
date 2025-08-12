@@ -55,8 +55,16 @@ describe('Pokemon Store', () => {
                     types: ['grass', 'poison'],
                     height: 20,
                     weight: 1000,
-                    baseExperience: 263,
-                    stats: []
+                    hp: 80,
+                    attack: 82,
+                    defense: 83,
+                    specialAttack: 100,
+                    specialDefense: 100,
+                    speed: 80,
+                    spriteUrl: 'https://example.com/venusaur-sprite.png',
+                    officialArtworkUrl: 'https://example.com/venusaur-artwork.png',
+                    isCaught: false,
+                    firstAddedToPokedex: '2025-01-01T00:00:00.000Z'
                 },
                 {
                     id: 1,
@@ -65,8 +73,16 @@ describe('Pokemon Store', () => {
                     types: ['grass', 'poison'],
                     height: 7,
                     weight: 69,
-                    baseExperience: 64,
-                    stats: []
+                    hp: 45,
+                    attack: 49,
+                    defense: 49,
+                    specialAttack: 65,
+                    specialDefense: 65,
+                    speed: 45,
+                    spriteUrl: 'https://example.com/bulbasaur-sprite.png',
+                    officialArtworkUrl: 'https://example.com/bulbasaur-artwork.png',
+                    isCaught: false,
+                    firstAddedToPokedex: '2025-01-01T00:00:00.000Z'
                 },
                 {
                     id: 2,
@@ -75,8 +91,16 @@ describe('Pokemon Store', () => {
                     types: ['grass', 'poison'],
                     height: 10,
                     weight: 130,
-                    baseExperience: 142,
-                    stats: []
+                    hp: 60,
+                    attack: 62,
+                    defense: 63,
+                    specialAttack: 80,
+                    specialDefense: 80,
+                    speed: 60,
+                    spriteUrl: 'https://example.com/ivysaur-sprite.png',
+                    officialArtworkUrl: 'https://example.com/ivysaur-artwork.png',
+                    isCaught: false,
+                    firstAddedToPokedex: '2025-01-01T00:00:00.000Z'
                 }
             ]
 
@@ -103,8 +127,16 @@ describe('Pokemon Store', () => {
                     types: ['grass', 'poison'],
                     height: 20,
                     weight: 1000,
-                    baseExperience: 263,
-                    stats: []
+                    hp: 80,
+                    attack: 82,
+                    defense: 83,
+                    specialAttack: 100,
+                    specialDefense: 100,
+                    speed: 80,
+                    spriteUrl: 'https://example.com/venusaur-sprite.png',
+                    officialArtworkUrl: 'https://example.com/venusaur-artwork.png',
+                    isCaught: false,
+                    firstAddedToPokedex: '2025-01-01T00:00:00.000Z'
                 },
                 {
                     id: 1,
@@ -113,8 +145,16 @@ describe('Pokemon Store', () => {
                     types: ['grass', 'poison'],
                     height: 7,
                     weight: 69,
-                    baseExperience: 64,
-                    stats: []
+                    hp: 45,
+                    attack: 49,
+                    defense: 49,
+                    specialAttack: 65,
+                    specialDefense: 65,
+                    speed: 45,
+                    spriteUrl: 'https://example.com/bulbasaur-sprite.png',
+                    officialArtworkUrl: 'https://example.com/bulbasaur-artwork.png',
+                    isCaught: false,
+                    firstAddedToPokedex: '2025-01-01T00:00:00.000Z'
                 }
             ]
 
@@ -143,8 +183,16 @@ describe('Pokemon Store', () => {
                 types: ['grass', 'poison'],
                 height: 7,
                 weight: 69,
-                baseExperience: 64,
-                stats: []
+                hp: 45,
+                attack: 49,
+                defense: 49,
+                specialAttack: 65,
+                specialDefense: 65,
+                speed: 45,
+                spriteUrl: 'https://example.com/bulbasaur-sprite.png',
+                officialArtworkUrl: 'https://example.com/bulbasaur-artwork.png',
+                isCaught: false,
+                firstAddedToPokedex: '2025-01-01T00:00:00.000Z'
             }
 
             const pokemonMap = new Map()
@@ -191,15 +239,22 @@ describe('Pokemon Store', () => {
             const pokemonMap = new Map()
             for (let i = 1; i <= 1000; i++) {
                 pokemonMap.set(i, {
+                    id: i,
                     pokeApiId: i,
                     name: `pokemon-${i}`,
                     types: ['normal'],
-                    imageUrl: `https://example.com/${i}.png`,
-                    spriteUrl: null,
-                    officialArtworkUrl: null,
+                    spriteUrl: `https://example.com/${i}-sprite.png`,
+                    officialArtworkUrl: `https://example.com/${i}-artwork.png`,
                     height: 10,
                     weight: 100,
-                    baseExperience: 50,
+                    hp: 50,
+                    attack: 50,
+                    defense: 50,
+                    specialAttack: 50,
+                    specialDefense: 50,
+                    speed: 50,
+                    isCaught: false,
+                    firstAddedToPokedex: '2025-01-01T00:00:00.000Z'
                 })
             }
 

@@ -23,6 +23,16 @@ export class PokedexUseCases {
         return this.pokedexRepo.catchPokemon(pokemonId, notes);
     }
 
+    async catchBulkPokemon(pokemonIds: number[], notes?: string): Promise<CaughtPokemon[]> {
+        if (pokemonIds.length === 0) {
+            throw new Error('No Pokemon IDs provided');
+        }
+        if (pokemonIds.some(id => id <= 0)) {
+            throw new Error('Invalid Pokemon ID provided');
+        }
+        return this.pokedexRepo.catchBulkPokemon(pokemonIds, notes);
+    }
+
     async releasePokemon(caughtPokemonId: number): Promise<boolean> {
         if (caughtPokemonId <= 0) {
             throw new Error('Invalid caught Pokemon ID');
@@ -30,9 +40,22 @@ export class PokedexUseCases {
         return this.pokedexRepo.releasePokemon(caughtPokemonId);
     }
 
+    async releaseBulkPokemon(caughtPokemonIds: number[]): Promise<number[]> {
+        if (!caughtPokemonIds || caughtPokemonIds.length === 0) {
+            throw new Error('No Pokemon IDs provided for bulk release');
+        }
+
+        const validIds = caughtPokemonIds.filter(id => id > 0);
+        if (validIds.length === 0) {
+            throw new Error('No valid Pokemon IDs provided for bulk release');
+        }
+
+        return this.pokedexRepo.releaseBulkPokemon(validIds);
+    }
+
     async updateCaughtPokemon(
         caughtPokemonId: number,
-        updates: { notes?: string; isFavorite?: boolean; nickname?: string }
+        updates: { notes?: string; isFavorite?: boolean }
     ): Promise<CaughtPokemon | null> {
         if (caughtPokemonId <= 0) {
             throw new Error('Invalid caught Pokemon ID');

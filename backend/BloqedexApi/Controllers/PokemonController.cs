@@ -148,11 +148,12 @@ namespace BloqedexApi.Controllers
 
             if (userId.HasValue)
             {
-                var caughtPokemon = await _caughtPokemonService.GetUserCaughtPokemonAsync(userId.Value, pokemon.Id);
-                if (caughtPokemon != null)
+                var isCaughtResult = await _caughtPokemonService.IsPokemonCaughtByUserAsync(userId.Value, pokeApiId);
+                if (isCaughtResult)
                 {
+                    var caughtPokemon = await _caughtPokemonService.GetUserCaughtPokemonAsync(userId.Value, pokemon.Id);
                     isCaught = true;
-                    firstAddedToPokedex = caughtPokemon.CreatedDate;
+                    firstAddedToPokedex = caughtPokemon?.CreatedDate;
                 }
             }
 

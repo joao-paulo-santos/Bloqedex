@@ -12,6 +12,9 @@ namespace BloqedexApi.DTOs
 
     public class CatchPokemonDto
     {
+        /// <summary>
+        /// The PokeAPI ID of the Pokemon to catch (e.g., 1 for Bulbasaur, 25 for Pikachu)
+        /// </summary>
         public int PokemonId { get; set; }
         public string? Notes { get; set; }
     }
@@ -39,7 +42,18 @@ namespace BloqedexApi.DTOs
 
     public class BulkReleasePokemonDto
     {
+        /// <summary>
+        /// List of caught Pokemon record IDs to release (internal database IDs from CaughtPokemon.Id)
+        /// </summary>
         public required List<int> CaughtPokemonIds { get; set; }
+    }
+
+    public class BulkReleasePokemonByPokeApiIdDto
+    {
+        /// <summary>
+        /// List of PokeAPI IDs to release (e.g., 25 for Pikachu, 1 for Bulbasaur)
+        /// </summary>
+        public required List<int> PokeApiIds { get; set; }
     }
 
     public class BulkOperationResultDto

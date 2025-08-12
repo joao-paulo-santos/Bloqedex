@@ -1,4 +1,4 @@
-export type { Pokemon, PokemonStat, PokemonType } from './Pokemon';
+export type { Pokemon } from './Pokemon';
 export type { CaughtPokemon } from './CaughtPokemon';
 export type { User } from './User';
 export type { SharedPokemon } from './SharedPokemon';

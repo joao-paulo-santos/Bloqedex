@@ -1,19 +1,18 @@
 import React from 'react';
-import type { PokemonFilters } from '../../../core/interfaces';
 import { SearchIcon, FilterIcon } from '../../../components/common/Icons';
+import type { CaughtPokemonFilters } from '../../../core/interfaces/PokemonFilters';
 
-interface PokemonFiltersProps {
-    filters: PokemonFilters;
-    onFiltersChange: (filters: Partial<PokemonFilters>) => void;
+interface CaughtPokemonFiltersProps {
+    filters: CaughtPokemonFilters;
+    onFiltersChange: (filters: Partial<CaughtPokemonFilters>) => void;
     onClearFilters: () => void;
 }
 
-export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
+export const CaughtPokemonFiltersComponent: React.FC<CaughtPokemonFiltersProps> = ({
     filters,
     onFiltersChange,
     onClearFilters
 }) => {
-
     const pokemonTypes = [
         'normal', 'fighting', 'flying', 'poison', 'ground', 'rock', 'bug', 'ghost',
         'steel', 'fire', 'water', 'grass', 'electric', 'psychic', 'ice', 'dragon',
@@ -21,8 +20,9 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
     ];
 
     const sortOptions = [
-        { value: 'pokeApiId', label: 'ID' },
+        { value: 'caughtDate', label: 'Caught Date' },
         { value: 'name', label: 'Name' },
+        { value: 'pokeApiId', label: 'Pokemon ID' },
         { value: 'height', label: 'Height' },
         { value: 'weight', label: 'Weight' },
         { value: 'hp', label: 'HP' },
@@ -38,8 +38,9 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
         return !!(
             filters.name ||
             filters.types?.length ||
-            filters.caughtOnly ||
-            filters.uncaughtOnly
+            filters.favoritesOnly ||
+            filters.caughtDateFrom ||
+            filters.caughtDateTo
         );
     };
 
@@ -53,7 +54,7 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
                         <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search by name..."
+                            placeholder="Search by name or ID..."
                             value={filters.name || ''}
                             onChange={(e) => onFiltersChange({ name: e.target.value || undefined })}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -82,12 +83,25 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
                     </div>
                 </div>
 
+                {/* Favorites Filter */}
+                <label className="flex items-center whitespace-nowrap">
+                    <input
+                        type="checkbox"
+                        checked={filters.favoritesOnly || false}
+                        onChange={(e) => onFiltersChange({
+                            favoritesOnly: e.target.checked || undefined
+                        })}
+                        className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700">Favorites Only</span>
+                </label>
+
                 {/* Sort By */}
                 <div className="w-56">
                     <select
-                        value={filters.sortBy || 'pokeApiId'}
+                        value={filters.sortBy || 'caughtDate'}
                         onChange={(e) => onFiltersChange({
-                            sortBy: e.target.value as PokemonFilters['sortBy']
+                            sortBy: e.target.value as CaughtPokemonFilters['sortBy']
                         })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
                     >
@@ -102,7 +116,7 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
                 {/* Sort Order */}
                 <div className="w-20">
                     <select
-                        value={filters.sortOrder || 'asc'}
+                        value={filters.sortOrder || 'desc'}
                         onChange={(e) => onFiltersChange({
                             sortOrder: e.target.value as 'asc' | 'desc'
                         })}
@@ -112,32 +126,6 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
                         <option value="desc">↓ Desc</option>
                     </select>
                 </div>
-
-                <label className="flex items-center whitespace-nowrap">
-                    <input
-                        type="checkbox"
-                        checked={filters.caughtOnly || false}
-                        onChange={(e) => onFiltersChange({
-                            caughtOnly: e.target.checked || undefined,
-                            uncaughtOnly: undefined // Clear opposite filter
-                        })}
-                        className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700">Caught Only</span>
-                </label>
-
-                <label className="flex items-center whitespace-nowrap">
-                    <input
-                        type="checkbox"
-                        checked={filters.uncaughtOnly || false}
-                        onChange={(e) => onFiltersChange({
-                            uncaughtOnly: e.target.checked || undefined,
-                            caughtOnly: undefined // Clear opposite filter
-                        })}
-                        className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700">Uncaught Only</span>
-                </label>
 
                 {/* Clear Filters */}
                 {hasActiveFilters() && (
@@ -150,6 +138,39 @@ export const PokemonFiltersComponent: React.FC<PokemonFiltersProps> = ({
                     </button>
                 )}
             </div>
+
+            {/* Advanced Filters Row */}
+            <div className="flex flex-wrap gap-4">
+                {/* Caught Date From */}
+                <div className="w-40">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Caught From
+                    </label>
+                    <input
+                        type="date"
+                        value={filters.caughtDateFrom || ''}
+                        onChange={(e) => onFiltersChange({ caughtDateFrom: e.target.value || undefined })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                </div>
+
+                {/* Caught Date To */}
+                <div className="w-40">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Caught To
+                    </label>
+                    <input
+                        type="date"
+                        value={filters.caughtDateTo || ''}
+                        onChange={(e) => onFiltersChange({ caughtDateTo: e.target.value || undefined })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                </div>
+
+                {/* Stats Filters can be added here in the future */}
+            </div>
         </div>
     );
 };
+
+export type { CaughtPokemonFilters };

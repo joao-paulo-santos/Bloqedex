@@ -4,6 +4,7 @@ import type { PokemonFilters } from '../../../core/interfaces';
 import { PokemonUseCases } from '../../../core/usecases';
 import { pokemonRepository } from '../../../infrastructure/repositories';
 import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStorage';
+import { getCurrentUserId } from '../../../common/utils/userContext';
 import { getLastConsecutiveId, getLastConsecutiveIdFromMap } from '../../../common/utils/pokemonHelpers';
 import { apiConfig } from '../../../config/api';
 
@@ -11,7 +12,7 @@ interface PokemonState {
     pokemonMap: Map<number, Pokemon>;
     lastConsecutiveId: number;
     totalPokemons: number | null;
-    allPokemonFetchedAt: number | null; // Timestamp when all Pokemon were fetched
+    allPokemonFetchedAt: number | null;
     isLoading: boolean;
     error: string | null;
     filters: PokemonFilters;
@@ -26,6 +27,9 @@ interface PokemonState {
     fillCache: () => Promise<void>;
     searchPokemon: (name: string) => Promise<void>;
     setFilters: (filters: PokemonFilters) => void;
+    updatePokemonCaughtStatus: (pokeApiId: number, isCaught: boolean) => void;
+    refreshCaughtStatus: () => Promise<void>;
+    clearAllCaughtStatus: () => void;
     clearError: () => void;
 }
 
@@ -84,9 +88,6 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
                 if (hasExcludedType) return false;
             }
 
-            if (filters.minBaseExperience !== undefined && (p.baseExperience || 0) < filters.minBaseExperience) return false;
-            if (filters.maxBaseExperience !== undefined && (p.baseExperience || 0) > filters.maxBaseExperience) return false;
-
             if (filters.minSpecialAttack !== undefined && (p.specialAttack || 0) < filters.minSpecialAttack) return false;
             if (filters.maxSpecialAttack !== undefined && (p.specialAttack || 0) > filters.maxSpecialAttack) return false;
             if (filters.minSpecialDefense !== undefined && (p.specialDefense || 0) < filters.minSpecialDefense) return false;
@@ -127,10 +128,6 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
                     aValue = a.weight;
                     bValue = b.weight;
                     break;
-                case 'baseExperience':
-                    aValue = a.baseExperience || 0;
-                    bValue = b.baseExperience || 0;
-                    break;
                 case 'hp':
                     aValue = a.hp || 0;
                     bValue = b.hp || 0;
@@ -160,10 +157,6 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
                         (a.specialAttack || 0) + (a.specialDefense || 0) + (a.speed || 0);
                     bValue = (b.hp || 0) + (b.attack || 0) + (b.defense || 0) +
                         (b.specialAttack || 0) + (b.specialDefense || 0) + (b.speed || 0);
-                    break;
-                case 'caughtAt':
-                    aValue = a.caughtAt || '';
-                    bValue = b.caughtAt || '';
                     break;
                 case 'firstAddedToPokedex':
                     aValue = a.firstAddedToPokedex || '';
@@ -293,6 +286,70 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
         set({ filters });
         // Note: Filtering logic can be implemented on the UI side
         // or here if needed for more complex filtering
+    },
+
+    updatePokemonCaughtStatus: (pokeApiId: number, isCaught: boolean) => {
+        const { pokemonMap } = get();
+        const pokemon = pokemonMap.get(pokeApiId);
+
+        if (pokemon) {
+            const updatedPokemon = { ...pokemon, isCaught };
+            const newMap = new Map(pokemonMap);
+            newMap.set(pokeApiId, updatedPokemon);
+
+            set({ pokemonMap: newMap });
+
+            indexedDBStorage.savePokemon(updatedPokemon).catch(error => {
+                console.error('Failed to update Pokemon caught status in IndexedDB:', error);
+            });
+        }
+    },
+
+    refreshCaughtStatus: async () => {
+        try {
+            const currentUserId = getCurrentUserId();
+            const caughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
+
+            const caughtPokemonIds = new Set(caughtPokemon.map(cp => cp.pokemon.pokeApiId));
+
+            const { pokemonMap } = get();
+            const updatedMap = new Map(pokemonMap);
+            let hasChanges = false;
+
+            for (const [pokeApiId, pokemon] of pokemonMap) {
+                const shouldBeCaught = caughtPokemonIds.has(pokeApiId);
+                if (pokemon.isCaught !== shouldBeCaught) {
+                    const updatedPokemon = { ...pokemon, isCaught: shouldBeCaught };
+                    updatedMap.set(pokeApiId, updatedPokemon);
+                    hasChanges = true;
+
+                    await indexedDBStorage.savePokemon(updatedPokemon);
+                }
+            }
+
+            if (hasChanges) {
+                set({ pokemonMap: updatedMap });
+            }
+        } catch (error) {
+            console.error('Failed to refresh caught status:', error);
+        }
+    },
+
+    clearAllCaughtStatus: () => {
+        const { pokemonMap } = get();
+        const newMap = new Map<number, Pokemon>();
+
+        pokemonMap.forEach((pokemon, key) => {
+            newMap.set(key, { ...pokemon, isCaught: false });
+        });
+
+        set({ pokemonMap: newMap });
+
+        newMap.forEach(pokemon => {
+            indexedDBStorage.savePokemon(pokemon).catch(error => {
+                console.error('Failed to clear Pokemon caught status in IndexedDB:', error);
+            });
+        });
     },
 
     clearError: () => {

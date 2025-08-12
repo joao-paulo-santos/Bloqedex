@@ -73,7 +73,7 @@ namespace BloqedexApi.Controllers
                 return BadRequest("No Pokemon specified for bulk catch operation");
 
             var pokemonToCatch = bulkCatchDto.PokemonToCatch
-                .Select(p => (p.PokemonId, p.Notes))
+                .Select(p => (p.PokemonId, p.Notes)) // PokemonId in DTO now represents PokeApiId
                 .ToList();
 
             var (successfulCatches, errors) = await _caughtPokemonService.BulkCatchPokemonAsync(userId.Value, pokemonToCatch);
@@ -110,6 +110,20 @@ namespace BloqedexApi.Controllers
             return Ok(CaughtPokemonMapper.ToDto(updatedCaughtPokemon));
         }
 
+        [HttpPatch("update/{pokeApiId}")]
+        public async Task<ActionResult<CaughtPokemonDto>> UpdateCaughtPokemonByPokeApiId(int pokeApiId, [FromBody] UpdateCaughtPokemonDto updateDto)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized();
+
+            var updatedCaughtPokemon = await _caughtPokemonService.UpdateCaughtPokemonByPokeApiIdAsync(userId.Value, pokeApiId, updateDto.Notes, updateDto.IsFavorite);
+            if (updatedCaughtPokemon == null)
+                return BadRequest("Failed to update caught Pokemon - not caught or not found");
+
+            return Ok(CaughtPokemonMapper.ToDto(updatedCaughtPokemon));
+        }
+
         [HttpDelete("{caughtPokemonId}")]
         public async Task<ActionResult> ReleasePokemon(int caughtPokemonId)
         {
@@ -120,6 +134,20 @@ namespace BloqedexApi.Controllers
             var success = await _caughtPokemonService.ReleasePokemonAsync(userId.Value, caughtPokemonId);
             if (!success)
                 return BadRequest("Failed to release Pokemon or Pokemon not found");
+
+            return Ok();
+        }
+
+        [HttpDelete("release/{pokeApiId}")]
+        public async Task<ActionResult> ReleasePokemonByPokeApiId(int pokeApiId)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized();
+
+            var success = await _caughtPokemonService.ReleasePokemonByPokeApiIdAsync(userId.Value, pokeApiId);
+            if (!success)
+                return BadRequest("Failed to release Pokemon - not caught or not found");
 
             return Ok();
         }
@@ -135,6 +163,28 @@ namespace BloqedexApi.Controllers
                 return BadRequest("No Pokemon specified for bulk release operation");
 
             var (successfulReleases, errors) = await _caughtPokemonService.BulkReleasePokemonAsync(userId.Value, bulkReleaseDto.CaughtPokemonIds);
+
+            var result = new BulkOperationResultDto
+            {
+                SuccessfulOperations = successfulReleases,
+                FailedOperations = errors.Count,
+                Errors = errors
+            };
+
+            return Ok(result);
+        }
+
+        [HttpDelete("release/bulk/pokeapi")]
+        public async Task<ActionResult<BulkOperationResultDto>> BulkReleasePokemonByPokeApiId([FromBody] BulkReleasePokemonByPokeApiIdDto bulkReleaseDto)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized();
+
+            if (bulkReleaseDto.PokeApiIds == null || !bulkReleaseDto.PokeApiIds.Any())
+                return BadRequest("No Pokemon specified for bulk release operation");
+
+            var (successfulReleases, errors) = await _caughtPokemonService.BulkReleasePokemonByPokeApiIdAsync(userId.Value, bulkReleaseDto.PokeApiIds);
 
             var result = new BulkOperationResultDto
             {

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore, useAppStore } from '../../stores';
-import { LoginDialog, RegisterDialog, FloatingAuthButton, SwitchToOnlineButton, OfflineAccountWarning } from '../../features/auth';
+import { indexedDBStorage } from '../../infrastructure/storage/IndexedDBStorage';
+import { LoginDialog, RegisterDialog, FloatingAuthButton, SwitchToOnlineButton, OfflineAccountWarning, PendingActionsWarning } from '../../features/auth';
 import { eventBus, authEvents } from '../../common/utils/eventBus';
 import {
     MenuIcon,
@@ -10,7 +11,8 @@ import {
     LogOutIcon,
     GridIcon,
     LockIcon,
-    StatusDotIcon
+    StatusDotIcon,
+    RefreshIcon
 } from '../common/Icons';
 
 interface LayoutProps {
@@ -22,9 +24,10 @@ export const Layout = ({ children }: LayoutProps) => {
     const [showLoginDialog, setShowLoginDialog] = useState(false);
     const [showRegisterDialog, setShowRegisterDialog] = useState(false);
     const [showOfflineWarning, setShowOfflineWarning] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
+    const [showPendingActionsWarning, setShowPendingActionsWarning] = useState(false);
+    const [pendingActionsCount, setPendingActionsCount] = useState(0);
     const location = useLocation();
-    const { user, logout, isAuthenticated, isOfflineAccount, syncPendingAccounts, getPendingAccountsCount } = useAuthStore();
+    const { user, logout, isAuthenticated, isOfflineAccount } = useAuthStore();
     const { isOnline } = useAppStore();
 
     // Listen for auth dialog events
@@ -73,16 +76,30 @@ export const Layout = ({ children }: LayoutProps) => {
         return location.pathname.startsWith(path);
     };
 
-    const handleLogout = () => {
-        if (isOfflineAccount) {
-            setShowOfflineWarning(true);
-        } else {
-            logout();
+    const handleLogout = async () => {
+        const { logoutWithPendingCheck } = useAuthStore.getState();
+
+        const shouldProceed = await logoutWithPendingCheck();
+
+        if (!shouldProceed) {
+            if (isOfflineAccount) {
+                setShowOfflineWarning(true);
+            } else {
+                try {
+                    const pendingActions = await indexedDBStorage.getPendingActions();
+                    setPendingActionsCount(pendingActions.length);
+                    setShowPendingActionsWarning(true);
+                } catch (error) {
+                    console.error('Failed to get pending actions for warning:', error);
+                    logout();
+                }
+            }
         }
     };
 
     const handleConfirmLogout = () => {
         setShowOfflineWarning(false);
+        setShowPendingActionsWarning(false);
         logout();
     };
 
@@ -159,7 +176,10 @@ export const Layout = ({ children }: LayoutProps) => {
                             {isAuthenticated ? (
                                 /* Authenticated User Menu */
                                 <div className="relative group">
-                                    <button className="flex items-center text-gray-700 hover:text-blue-600 transition-colors">
+                                    <button className={`flex items-center transition-colors ${isOfflineAccount
+                                        ? 'text-yellow-600 hover:text-yellow-700 sm:text-gray-700 sm:hover:text-blue-600'
+                                        : 'text-gray-700 hover:text-blue-600'
+                                        }`}>
                                         <UserIcon size={20} className="mr-2" />
                                         <div className="hidden sm:flex items-center">
                                             <span>{user?.username}</span>
@@ -172,7 +192,7 @@ export const Layout = ({ children }: LayoutProps) => {
                                     </button>
 
                                     {/* Dropdown menu */}
-                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-md shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                         <div className="py-1">
                                             <Link
                                                 to="/profile"
@@ -181,6 +201,15 @@ export const Layout = ({ children }: LayoutProps) => {
                                                 <UserIcon size={16} className="mr-3" />
                                                 Profile
                                             </Link>
+                                            {isOfflineAccount && isOnline && (
+                                                <button
+                                                    onClick={() => authEvents.openRegister()}
+                                                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 text-left"
+                                                >
+                                                    <RefreshIcon size={16} className="mr-3 flex-shrink-0" />
+                                                    <span>Switch to Online</span>
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={handleLogout}
                                                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -263,6 +292,18 @@ export const Layout = ({ children }: LayoutProps) => {
                                             <UserIcon size={20} className="mr-3" />
                                             Profile
                                         </Link>
+                                        {isOfflineAccount && isOnline && (
+                                            <button
+                                                onClick={() => {
+                                                    authEvents.openRegister();
+                                                    setIsMobileMenuOpen(false);
+                                                }}
+                                                className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-left text-gray-700 hover:text-blue-600 hover:bg-gray-50 transition-colors"
+                                            >
+                                                <RefreshIcon size={20} className="mr-3 flex-shrink-0" />
+                                                <span>Switch to Online</span>
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => {
                                                 handleLogout();
@@ -325,6 +366,15 @@ export const Layout = ({ children }: LayoutProps) => {
                 onClose={() => setShowOfflineWarning(false)}
                 onConfirmLogout={handleConfirmLogout}
                 username={user?.username || ''}
+            />
+
+            {/* Pending Actions Warning Dialog */}
+            <PendingActionsWarning
+                isOpen={showPendingActionsWarning}
+                onClose={() => setShowPendingActionsWarning(false)}
+                onConfirmLogout={handleConfirmLogout}
+                username={user?.username || ''}
+                pendingActionsCount={pendingActionsCount}
             />
 
             {/* Floating Auth Button (only show if not authenticated) */}

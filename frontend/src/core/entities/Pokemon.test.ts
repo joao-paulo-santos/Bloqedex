@@ -8,19 +8,17 @@ describe('Pokemon Entity', () => {
         name: 'pikachu',
         height: 4,
         weight: 60,
-        baseExperience: 112,
-        stats: [
-            { name: 'hp', baseStat: 35 },
-            { name: 'attack', baseStat: 55 },
-            { name: 'defense', baseStat: 40 },
-            { name: 'special-attack', baseStat: 50 },
-            { name: 'special-defense', baseStat: 50 },
-            { name: 'speed', baseStat: 90 }
-        ],
+        hp: 35,
+        attack: 55,
+        defense: 40,
+        specialAttack: 50,
+        specialDefense: 50,
+        speed: 90,
         types: ['electric'],
-        imageUrl: 'https://example.com/pikachu.png',
         spriteUrl: 'https://example.com/pikachu-sprite.png',
-        officialArtworkUrl: 'https://example.com/pikachu-artwork.png'
+        officialArtworkUrl: 'https://example.com/pikachu-artwork.png',
+        isCaught: false,
+        firstAddedToPokedex: '2025-01-01T00:00:00.000Z'
     }
 
     it('should have required properties', () => {
@@ -29,8 +27,17 @@ describe('Pokemon Entity', () => {
         expect(mockPokemon).toHaveProperty('name')
         expect(mockPokemon).toHaveProperty('height')
         expect(mockPokemon).toHaveProperty('weight')
-        expect(mockPokemon).toHaveProperty('stats')
+        expect(mockPokemon).toHaveProperty('hp')
+        expect(mockPokemon).toHaveProperty('attack')
+        expect(mockPokemon).toHaveProperty('defense')
+        expect(mockPokemon).toHaveProperty('specialAttack')
+        expect(mockPokemon).toHaveProperty('specialDefense')
+        expect(mockPokemon).toHaveProperty('speed')
         expect(mockPokemon).toHaveProperty('types')
+        expect(mockPokemon).toHaveProperty('spriteUrl')
+        expect(mockPokemon).toHaveProperty('officialArtworkUrl')
+        expect(mockPokemon).toHaveProperty('isCaught')
+        expect(mockPokemon).toHaveProperty('firstAddedToPokedex')
     })
 
     it('should have correct types for properties', () => {
@@ -39,19 +46,26 @@ describe('Pokemon Entity', () => {
         expect(typeof mockPokemon.name).toBe('string')
         expect(typeof mockPokemon.height).toBe('number')
         expect(typeof mockPokemon.weight).toBe('number')
-        expect(Array.isArray(mockPokemon.stats)).toBe(true)
+        expect(typeof mockPokemon.hp).toBe('number')
+        expect(typeof mockPokemon.attack).toBe('number')
+        expect(typeof mockPokemon.defense).toBe('number')
+        expect(typeof mockPokemon.specialAttack).toBe('number')
+        expect(typeof mockPokemon.specialDefense).toBe('number')
+        expect(typeof mockPokemon.speed).toBe('number')
         expect(Array.isArray(mockPokemon.types)).toBe(true)
+        expect(typeof mockPokemon.spriteUrl).toBe('string')
+        expect(typeof mockPokemon.officialArtworkUrl).toBe('string')
+        expect(typeof mockPokemon.isCaught).toBe('boolean')
+        expect(typeof mockPokemon.firstAddedToPokedex).toBe('string')
     })
 
-    it('should have valid stat structure', () => {
-        expect(mockPokemon.stats).toHaveLength(6)
-
-        mockPokemon.stats.forEach(stat => {
-            expect(stat).toHaveProperty('name')
-            expect(stat).toHaveProperty('baseStat')
-            expect(typeof stat.name).toBe('string')
-            expect(typeof stat.baseStat).toBe('number')
-        })
+    it('should have valid stat values', () => {
+        expect(mockPokemon.hp).toBeGreaterThanOrEqual(0)
+        expect(mockPokemon.attack).toBeGreaterThanOrEqual(0)
+        expect(mockPokemon.defense).toBeGreaterThanOrEqual(0)
+        expect(mockPokemon.specialAttack).toBeGreaterThanOrEqual(0)
+        expect(mockPokemon.specialDefense).toBeGreaterThanOrEqual(0)
+        expect(mockPokemon.speed).toBeGreaterThanOrEqual(0)
     })
 
     it('should have at least one type', () => {
@@ -61,31 +75,22 @@ describe('Pokemon Entity', () => {
         })
     })
 
-    it('should handle optional properties', () => {
-        const minimalPokemon: Pokemon = {
-            id: 1,
-            pokeApiId: 1,
-            name: 'bulbasaur',
-            height: 7,
-            weight: 69,
-            stats: [],
-            types: ['grass', 'poison']
-        }
-
-        expect(minimalPokemon.isCaught).toBeUndefined()
-        expect(minimalPokemon.caughtAt).toBeUndefined()
-        expect(minimalPokemon.imageUrl).toBeUndefined()
-        expect(minimalPokemon.baseExperience).toBeUndefined()
-    })
-
-    it('should handle caught Pokemon properties', () => {
+    it('should handle caught Pokemon correctly', () => {
         const caughtPokemon: Pokemon = {
             ...mockPokemon,
-            isCaught: true,
-            caughtAt: '2025-01-01T00:00:00.000Z'
+            isCaught: true
         }
 
         expect(caughtPokemon.isCaught).toBe(true)
-        expect(typeof caughtPokemon.caughtAt).toBe('string')
+    })
+
+    it('should have valid URLs', () => {
+        expect(mockPokemon.spriteUrl).toMatch(/^https?:\/\//)
+        expect(mockPokemon.officialArtworkUrl).toMatch(/^https?:\/\//)
+    })
+
+    it('should have valid firstAddedToPokedex date format', () => {
+        expect(mockPokemon.firstAddedToPokedex).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
+        expect(new Date(mockPokemon.firstAddedToPokedex)).toBeInstanceOf(Date)
     })
 })

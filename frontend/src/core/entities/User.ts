@@ -1,6 +1,8 @@
 export interface User {
-    id: number | string;
+    id: number;
     username: string;
     email: string;
-    createdAt: string;
+    role: string;
+    createdDate: string;
+    caughtPokemonCount: number;
 }
