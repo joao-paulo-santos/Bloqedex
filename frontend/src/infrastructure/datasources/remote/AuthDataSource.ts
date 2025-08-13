@@ -1,6 +1,7 @@
 import type { AuthResponse, LoginRequest, RegisterRequest, User } from '../../../core/types';
 import { BaseDataSource } from './BaseDataSource';
 import { indexedDBStorage } from '../../storage/IndexedDBStorage';
+import { API_PATHS } from '../../../config/uriPaths';
 
 // Data source for authentication operations
 export class AuthDataSource extends BaseDataSource {
@@ -43,7 +44,7 @@ export class AuthDataSource extends BaseDataSource {
     }
 
     async login(credentials: LoginRequest): Promise<AuthResponse> {
-        const response = await this.client.post<AuthResponse>('/Auth/login', credentials);
+        const response = await this.client.post<AuthResponse>(API_PATHS.AUTH.LOGIN, credentials);
         const { token, user } = response.data;
 
         localStorage.setItem('auth_token', token);
@@ -53,7 +54,7 @@ export class AuthDataSource extends BaseDataSource {
     }
 
     async register(userData: RegisterRequest): Promise<AuthResponse> {
-        const response = await this.client.post<AuthResponse>('/Auth/register', userData);
+        const response = await this.client.post<AuthResponse>(API_PATHS.AUTH.REGISTER, userData);
         const { token, user } = response.data;
 
         localStorage.setItem('auth_token', token);
@@ -97,7 +98,7 @@ export class AuthDataSource extends BaseDataSource {
             // If we're online, try to refresh user data from API
             if (navigator.onLine) {
                 try {
-                    const response = await this.client.get<User>('/Auth/me');
+                    const response = await this.client.get<User>(API_PATHS.AUTH.ME);
                     const freshUser = response.data;
 
                     // Update cached user data with fresh data

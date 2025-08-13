@@ -2,44 +2,10 @@ import type { CaughtPokemon, PokedexStats, OfflineAction } from '../../../core/t
 import { BaseDataSource } from './BaseDataSource';
 import { indexedDBStorage } from '../../storage/IndexedDBStorage';
 import { getCurrentUserId } from '../../../common/utils/userContext';
+import { API_PATHS } from '../../../config/uriPaths';
 
 // Data source for Pokedex operations (caught Pokemon management)
 export class PokedexDataSource extends BaseDataSource {
-    private isNetworkError(error: unknown): boolean {
-        if (!error || typeof error !== 'object') return false;
-
-        const err = error as {
-            message?: string;
-            code?: string;
-            status?: number;
-            response?: { status?: number };
-        };
-        const errorMessage = err.message?.toLowerCase() || '';
-        const errorCode = err.code?.toLowerCase() || '';
-
-        const networkErrorPatterns = [
-            'network error',
-            'connection refused',
-            'err_connection_refused',
-            'err_network',
-            'err_internet_disconnected',
-            'failed to fetch',
-            'net::err_',
-            'timeout',
-            'enotfound',
-            'econnrefused',
-            'enetdown',
-            'enetunreach',
-            'ehostunreach',
-            'econnreset'
-        ];
-
-        const networkStatusCodes = [0, 502, 503, 504];
-
-        return networkErrorPatterns.some(pattern =>
-            errorMessage.includes(pattern) || errorCode.includes(pattern)
-        ) || networkStatusCodes.includes(err.status || 0) || networkStatusCodes.includes(err.response?.status || 0);
-    }
     async getCaughtPokemon(pageIndex: number = 0, pageSize: number = 20): Promise<{ caughtPokemon: CaughtPokemon[], totalCount: number, hasNextPage: boolean, hasPreviousPage: boolean }> {
         const currentUserId = getCurrentUserId();
 
@@ -58,7 +24,7 @@ export class PokedexDataSource extends BaseDataSource {
                         pageSize: number;
                         hasNextPage: boolean;
                         hasPreviousPage: boolean;
-                    }>('/pokedex', {
+                    }>(API_PATHS.POKEDEX.LIST, {
                         params: { pageIndex, pageSize }
                     });
 
@@ -97,7 +63,7 @@ export class PokedexDataSource extends BaseDataSource {
 
         if (this.isOnline()) {
             try {
-                const response = await this.client.post<CaughtPokemon>('/pokedex/catch', payload);
+                const response = await this.client.post<CaughtPokemon>(API_PATHS.POKEDEX.CATCH, payload);
 
                 const existingCaught = await indexedDBStorage.getCaughtPokemon(getCurrentUserId() || undefined);
                 const tempEntries = existingCaught.filter(cp =>
@@ -167,7 +133,7 @@ export class PokedexDataSource extends BaseDataSource {
         // If online, make API call
         if (this.isOnline()) {
             try {
-                const response = await this.client.post<CaughtPokemon[]>('/pokedex/catch/bulk', payload);
+                const response = await this.client.post<CaughtPokemon[]>(API_PATHS.POKEDEX.CATCH_BULK, payload);
 
 
                 const caughtPokemonArray = Array.isArray(response.data) ? response.data :
@@ -246,7 +212,7 @@ export class PokedexDataSource extends BaseDataSource {
         // If online, make API call
         if (await this.isOnline()) {
             try {
-                await this.client.delete(`/pokedex/release/${pokeApiId}`);
+                await this.client.delete(API_PATHS.POKEDEX.RELEASE(pokeApiId));
                 return;
             } catch (error) {
                 console.warn('Release request failed while online:', error);
@@ -291,7 +257,7 @@ export class PokedexDataSource extends BaseDataSource {
         // If online, make API call
         if (this.isOnline()) {
             try {
-                await this.client.delete('/pokedex/release/bulk/pokeapi', { data: payload });
+                await this.client.delete(API_PATHS.POKEDEX.RELEASE_BULK, { data: payload });
                 return;
             } catch (error) {
                 console.warn('Bulk release request failed while online:', error);
@@ -334,7 +300,7 @@ export class PokedexDataSource extends BaseDataSource {
         // If online, make API call
         if (this.isOnline()) {
             try {
-                const response = await this.client.patch<CaughtPokemon>(`/pokedex/update/${pokemonApiId}`, updates);
+                const response = await this.client.patch<CaughtPokemon>(API_PATHS.POKEDEX.UPDATE(pokemonApiId), updates);
 
                 const currentUserId = getCurrentUserId();
                 const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
@@ -385,7 +351,7 @@ export class PokedexDataSource extends BaseDataSource {
     async getPokedexStats(): Promise<PokedexStats> {
         if (this.isOnline()) {
             try {
-                const response = await this.client.get<PokedexStats>('/pokedex/stats');
+                const response = await this.client.get<PokedexStats>(API_PATHS.POKEDEX.STATS);
 
                 return response.data;
             } catch (error) {

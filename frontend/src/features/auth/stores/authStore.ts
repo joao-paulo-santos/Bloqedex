@@ -4,7 +4,7 @@ import type { User, CaughtPokemon } from '../../../core/types';
 import { authRepository } from '../../../infrastructure/repositories';
 import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStorage';
 import { toastEvents } from '../../../common/utils/eventBus';
-import { extractErrorMessage } from '../../../infrastructure/datasources/remote/BaseDataSource';
+import { extractErrorMessage } from '../../../common/utils/networkHelpers';
 
 interface PendingAccount {
     id: string;

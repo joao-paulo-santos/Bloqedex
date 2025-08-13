@@ -1,6 +1,7 @@
 import type { Pokemon, PaginatedResponse } from '../../../core/types';
 import { BaseDataSource } from './BaseDataSource';
 import { indexedDBStorage } from '../../storage/IndexedDBStorage';
+import { API_PATHS } from '../../../config/uriPaths';
 
 // Data source for Pokemon data operations
 export class PokemonDataSource extends BaseDataSource {
@@ -27,7 +28,7 @@ export class PokemonDataSource extends BaseDataSource {
         // We don't have all Pokemon for this page, so fetch from API if online
         if (this.isOnline()) {
             try {
-                const response = await this.client.get<PaginatedResponse<Pokemon>>('/pokemon', {
+                const response = await this.client.get<PaginatedResponse<Pokemon>>(API_PATHS.POKEMON.LIST, {
                     params: { pageIndex: page, pageSize }
                 });
 
@@ -62,7 +63,7 @@ export class PokemonDataSource extends BaseDataSource {
         // If online, fetch from API
         if (this.isOnline()) {
             try {
-                const response = await this.client.get<Pokemon>(`/pokemon/${id}`);
+                const response = await this.client.get<Pokemon>(API_PATHS.POKEMON.BY_ID(id));
 
                 // Store the response for offline access
                 await indexedDBStorage.savePokemon(response.data);
@@ -92,7 +93,7 @@ export class PokemonDataSource extends BaseDataSource {
 
         // If online, fetch from API to get more comprehensive results
         try {
-            const response = await this.client.get<Pokemon[]>('/pokemon/search', {
+            const response = await this.client.get<Pokemon[]>(API_PATHS.POKEMON.SEARCH, {
                 params: { q: query }
             });
 

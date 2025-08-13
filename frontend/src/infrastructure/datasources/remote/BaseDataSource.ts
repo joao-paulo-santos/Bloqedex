@@ -1,55 +1,8 @@
 import axios, { type AxiosInstance } from 'axios';
 import { apiConfig } from '../../../config/api';
 import { useAppStore } from '../../../stores';
-
-export const extractErrorMessage = (error: unknown): string => {
-    if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: Record<string, unknown> } };
-        const data = axiosError.response?.data;
-
-        if (data) {
-            if (data.errors && typeof data.errors === 'object') {
-                const errorMessages = [];
-                for (const [, messages] of Object.entries(data.errors)) {
-                    if (Array.isArray(messages)) {
-                        errorMessages.push(...messages);
-                    } else if (typeof messages === 'string') {
-                        errorMessages.push(messages);
-                    }
-                }
-                if (errorMessages.length > 0) {
-                    return errorMessages[0];
-                }
-            }
-
-            if (typeof data.message === 'string') {
-                return data.message;
-            }
-
-            if (typeof data.title === 'string') {
-                return data.title;
-            }
-
-            if (typeof data.error === 'string') {
-                return data.error;
-            }
-
-            if (typeof data.detail === 'string') {
-                return data.detail;
-            }
-
-            if (typeof data === 'string') {
-                return data;
-            }
-        }
-    }
-
-    if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
-        return error.message;
-    }
-
-    return 'An unexpected error occurred';
-};
+import { isNetworkError } from '../../../common/utils/networkHelpers';
+import { API_PATHS } from '../../../config/uriPaths';
 
 export class BaseDataSource {
     protected client: AxiosInstance;
@@ -95,6 +48,11 @@ export class BaseDataSource {
         return appStore.isOnline;
     }
 
+    // Network error detection helper
+    protected isNetworkError(error: unknown): boolean {
+        return isNetworkError(error);
+    }
+
     // Health check method for the background service only
     async checkHealth(): Promise<boolean> {
         if (!navigator.onLine) return false;
@@ -106,7 +64,7 @@ export class BaseDataSource {
                 validateStatus: () => true,
             });
 
-            const response = await healthClient.get('/health');
+            const response = await healthClient.get(API_PATHS.SYSTEM.HEALTH);
             return response.status >= 200 && response.status < 300;
         } catch {
             return false;

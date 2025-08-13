@@ -1,640 +1,195 @@
-import type { Pokemon, CaughtPokemon, User, PokedexStats, OfflineAction, IOfflineStorage } from '../../core/types';
-import { getLastConsecutiveIdFromIds } from '../../common/utils/pokemonHelpers';
+import type {
+    Pokemon,
+    CaughtPokemon,
+    User,
+    PokedexStats,
+    OfflineAction,
+    IOfflineStorage
+} from '../../core/types';
+import {
+    LocalPokemonStore,
+    LocalCaughtPokemonStore,
+    LocalUserStore,
+    LocalOfflineActionStore,
+    type PendingAccount
+} from './stores';
 
-interface PendingAccount {
-    id: string;
-    username: string;
-    email: string;
-    createdAt: number;
-    syncAttempts: number;
-}
-
+/**
+ * Modern IndexedDB storage implementation using specialized stores
+ * Each domain (Pokemon, Users, etc.) is handled by a dedicated store class
+ */
 export class IndexedDBStorage implements IOfflineStorage {
-    private dbName = 'BloqedexDB';
-    private dbVersion = 4;
-    private db: IDBDatabase | null = null;
-    private pokemonIdsCache: Set<number> | null = null;
+    private pokemonStore = new LocalPokemonStore();
+    private caughtPokemonStore = new LocalCaughtPokemonStore();
+    private userStore = new LocalUserStore();
+    private offlineActionStore = new LocalOfflineActionStore();
+
+    private initialized = false;
 
     async init(): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.dbVersion);
+        if (this.initialized) return;
 
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                this.db = request.result;
-                resolve();
-            };
+        // Initialize all stores (they share the same database)
+        await Promise.all([
+            this.pokemonStore.init(),
+            this.caughtPokemonStore.init(),
+            this.userStore.init(),
+            this.offlineActionStore.init()
+        ]);
 
-            request.onupgradeneeded = (event) => {
-                const db = (event.target as IDBOpenDBRequest).result;
-
-                // Pokemon store
-                if (!db.objectStoreNames.contains('pokemon')) {
-                    const pokemonStore = db.createObjectStore('pokemon', { keyPath: 'id' });
-                    pokemonStore.createIndex('pokeApiId', 'pokeApiId', { unique: false });
-                    pokemonStore.createIndex('name', 'name', { unique: false });
-                }
-
-                // Caught Pokemon store
-                if (!db.objectStoreNames.contains('caughtPokemon')) {
-                    const caughtStore = db.createObjectStore('caughtPokemon', { keyPath: 'id' });
-                    caughtStore.createIndex('pokemonId', 'pokemon.id', { unique: false });
-                    caughtStore.createIndex('caughtDate', 'caughtDate', { unique: false });
-                    caughtStore.createIndex('userId', 'userId', { unique: false });
-                }
-
-                // Users store
-                if (!db.objectStoreNames.contains('users')) {
-                    db.createObjectStore('users', { keyPath: 'id' });
-                }
-
-                // Offline actions store
-                if (!db.objectStoreNames.contains('offlineActions')) {
-                    const actionsStore = db.createObjectStore('offlineActions', { keyPath: 'id' });
-                    actionsStore.createIndex('timestamp', 'timestamp', { unique: false });
-                    actionsStore.createIndex('status', 'status', { unique: false });
-                }
-
-                // Pending accounts store
-                if (!db.objectStoreNames.contains('pendingAccounts')) {
-                    const pendingAccountsStore = db.createObjectStore('pendingAccounts', { keyPath: 'id' });
-                    pendingAccountsStore.createIndex('email', 'email', { unique: true });
-                    pendingAccountsStore.createIndex('createdAt', 'createdAt', { unique: false });
-                }
-            };
-        });
+        this.initialized = true;
     }
 
-    async isOnline(): Promise<boolean> {
-        return navigator.onLine;
-    }
-
-    async savePendingAction(action: OfflineAction): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['offlineActions'], 'readwrite');
-        const store = transaction.objectStore('offlineActions');
-
-        return new Promise((resolve, reject) => {
-            const request = store.put(action);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async getPendingActions(): Promise<OfflineAction[]> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['offlineActions'], 'readonly');
-        const store = transaction.objectStore('offlineActions');
-        const index = store.index('status');
-
-        return new Promise((resolve, reject) => {
-            const request = index.getAll('pending');
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async clearPendingActions(): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['offlineActions'], 'readwrite');
-        const store = transaction.objectStore('offlineActions');
-
-        return new Promise((resolve, reject) => {
-            const request = store.clear();
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async deletePendingAction(actionId: string): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['offlineActions'], 'readwrite');
-        const store = transaction.objectStore('offlineActions');
-
-        return new Promise((resolve, reject) => {
-            const request = store.delete(actionId);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async syncWhenOnline(): Promise<void> {
-        const isOnline = await this.isOnline();
-        if (!isOnline) return;
-
-    }
+    // ==========================================
+    // Pokemon Operations (delegate to PokemonStore)
+    // ==========================================
 
     async savePokemon(pokemon: Pokemon): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['pokemon'], 'readwrite');
-        const store = transaction.objectStore('pokemon');
-
-        return new Promise((resolve, reject) => {
-            const request = store.put(pokemon);
-            request.onsuccess = () => {
-                if (this.pokemonIdsCache) {
-                    this.pokemonIdsCache.add(pokemon.id);
-                }
-                resolve();
-            };
-            request.onerror = () => reject(request.error);
-        });
+        return this.pokemonStore.savePokemon(pokemon);
     }
 
     async getPokemon(id: number): Promise<Pokemon | null> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['pokemon'], 'readonly');
-        const store = transaction.objectStore('pokemon');
-
-        return new Promise((resolve, reject) => {
-            const request = store.get(id);
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => reject(request.error);
-        });
+        return this.pokemonStore.getPokemon(id);
     }
 
     async getPokemonByPokeApiId(pokeApiId: number): Promise<Pokemon | null> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['pokemon'], 'readonly');
-        const store = transaction.objectStore('pokemon');
-        const index = store.index('pokeApiId');
-
-        return new Promise((resolve, reject) => {
-            const request = index.get(pokeApiId);
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => reject(request.error);
-        });
+        return this.pokemonStore.getPokemonByPokeApiId(pokeApiId);
     }
 
     async getAllPokemon(): Promise<Pokemon[]> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['pokemon'], 'readonly');
-        const store = transaction.objectStore('pokemon');
-
-        return new Promise((resolve, reject) => {
-            const request = store.getAll();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+        return this.pokemonStore.getAllPokemon();
     }
 
     async getPokemonPage(page: number, pageSize: number): Promise<{ pokemon: Pokemon[], totalCount: number }> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['pokemon'], 'readonly');
-        const store = transaction.objectStore('pokemon');
-
-        return new Promise((resolve, reject) => {
-            // Get total count first
-            const countRequest = store.count();
-            countRequest.onsuccess = () => {
-                const totalCount = countRequest.result;
-
-                // Calculate range for pagination
-                const startIndex = (page - 1) * pageSize;
-
-                // Use cursor to efficiently get the page
-                const pokemon: Pokemon[] = [];
-                let currentIndex = 0;
-
-                const cursorRequest = store.openCursor();
-                cursorRequest.onsuccess = (event) => {
-                    const cursor = (event.target as IDBRequest).result;
-
-                    if (cursor) {
-                        if (currentIndex >= startIndex && pokemon.length < pageSize) {
-                            pokemon.push(cursor.value);
-                        }
-                        currentIndex++;
-
-                        if (pokemon.length < pageSize && currentIndex < totalCount) {
-                            cursor.continue();
-                        } else {
-                            resolve({ pokemon, totalCount });
-                        }
-                    } else {
-                        resolve({ pokemon, totalCount });
-                    }
-                };
-                cursorRequest.onerror = () => reject(cursorRequest.error);
-            };
-            countRequest.onerror = () => reject(countRequest.error);
-        });
+        return this.pokemonStore.getPokemonPage(page, pageSize);
     }
 
     async getPokemonCount(): Promise<number> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['pokemon'], 'readonly');
-        const store = transaction.objectStore('pokemon');
-
-        return new Promise((resolve, reject) => {
-            const request = store.count();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
+        return this.pokemonStore.getPokemonCount();
     }
 
     async hasPokemonRange(startId: number, endId: number): Promise<boolean> {
-        if (!this.db) await this.init();
-
-        const existingIds = await this.getAllPokemonIds();
-
-        // Check if we have all Pokemon in the range
-        for (let id = startId; id <= endId; id++) {
-            if (!existingIds.has(id)) {
-                return false;
-            }
-        }
-        return true;
+        return this.pokemonStore.hasPokemonRange(startId, endId);
     }
 
     async getPokemonByIdRange(startId: number, endId: number): Promise<Pokemon[]> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['pokemon'], 'readonly');
-        const store = transaction.objectStore('pokemon');
-        const pokemon: Pokemon[] = [];
-
-        return new Promise((resolve, reject) => {
-            for (let id = startId; id <= endId; id++) {
-                const request = store.get(id);
-                request.onsuccess = () => {
-                    if (request.result) {
-                        pokemon.push(request.result);
-                    }
-                    if (id === endId) {
-                        // Sort by ID to maintain order
-                        pokemon.sort((a, b) => a.id - b.id);
-                        resolve(pokemon);
-                    }
-                };
-                request.onerror = () => reject(request.error);
-            }
-        });
+        return this.pokemonStore.getPokemonByIdRange(startId, endId);
     }
 
     async getAllPokemonIds(): Promise<Set<number>> {
-        // Return cached IDs if available
-        if (this.pokemonIdsCache) {
-            return this.pokemonIdsCache;
-        }
-
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['pokemon'], 'readonly');
-        const store = transaction.objectStore('pokemon');
-
-        return new Promise((resolve, reject) => {
-            const request = store.getAllKeys();
-            request.onsuccess = () => {
-                const ids = new Set(request.result as number[]);
-                this.pokemonIdsCache = ids;
-                resolve(ids);
-            };
-            request.onerror = () => reject(request.error);
-        });
+        return this.pokemonStore.getAllPokemonIds();
     }
 
     async getLastConsecutiveId(): Promise<number> {
-        const allIds = await this.getAllPokemonIds();
-        return getLastConsecutiveIdFromIds(allIds);
+        return this.pokemonStore.getLastConsecutiveId();
     }
 
     async saveManyPokemon(pokemon: Pokemon[]): Promise<void> {
-        if (!this.db) await this.init();
-        const existingIds = await this.getAllPokemonIds();
-
-        const newPokemon = pokemon.filter(p => !existingIds.has(p.id));
-
-        if (newPokemon.length === 0) {
-            return;
-        }
-
-        const transaction = this.db!.transaction(['pokemon'], 'readwrite');
-        const store = transaction.objectStore('pokemon');
-
-        return new Promise((resolve, reject) => {
-            let completed = 0;
-            const total = newPokemon.length;
-
-            newPokemon.forEach(p => {
-                const request = store.put(p);
-                request.onsuccess = () => {
-                    if (this.pokemonIdsCache) {
-                        this.pokemonIdsCache.add(p.id);
-                    }
-                    completed++;
-                    if (completed === total) {
-                        resolve();
-                    }
-                };
-                request.onerror = () => reject(request.error);
-            });
-        });
+        return this.pokemonStore.saveManyPokemon(pokemon);
     }
 
+    // ==========================================
+    // Caught Pokemon Operations (delegate to CaughtPokemonStore)
+    // ==========================================
+
     async saveCaughtPokemon(caughtPokemon: CaughtPokemon): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['caughtPokemon'], 'readwrite');
-        const store = transaction.objectStore('caughtPokemon');
-
-        return new Promise((resolve, reject) => {
-            const request = store.put(caughtPokemon);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
+        return this.caughtPokemonStore.saveCaughtPokemon(caughtPokemon);
     }
 
     async getCaughtPokemon(userId?: number | string): Promise<CaughtPokemon[]> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['caughtPokemon'], 'readonly');
-        const store = transaction.objectStore('caughtPokemon');
-
-        return new Promise((resolve, reject) => {
-            if (userId) {
-                // Check if the userId index exists before trying to use it
-                try {
-                    if (store.indexNames.contains('userId')) {
-                        // Filter by userId using the index
-                        const index = store.index('userId');
-                        const request = index.getAll(userId);
-                        request.onsuccess = () => {
-                            const result = request.result;
-                            const uniquePokemon = this.removeDuplicatesByPokeApiId(result);
-                            resolve(uniquePokemon);
-                        };
-                        request.onerror = () => reject(request.error);
-                    } else {
-                        // Fallback: get all and filter manually
-                        console.warn('userId index not found, filtering manually');
-                        const request = store.getAll();
-                        request.onsuccess = () => {
-                            const allItems = request.result;
-                            const filtered = allItems.filter((item: CaughtPokemon) => item.userId === userId);
-                            const uniquePokemon = this.removeDuplicatesByPokeApiId(filtered);
-                            resolve(uniquePokemon);
-                        };
-                        request.onerror = () => reject(request.error);
-                    }
-                } catch (error) {
-                    console.error('Error accessing userId index:', error);
-                    // Fallback: get all and filter manually
-                    const request = store.getAll();
-                    request.onsuccess = () => {
-                        const allItems = request.result;
-                        const filtered = allItems.filter((item: CaughtPokemon) => item.userId === userId);
-                        const uniquePokemon = this.removeDuplicatesByPokeApiId(filtered);
-                        resolve(uniquePokemon);
-                    };
-                    request.onerror = () => reject(request.error);
-                }
-            } else {
-                // Get all caught Pokemon
-                const request = store.getAll();
-                request.onsuccess = () => {
-                    const result = request.result;
-                    const uniquePokemon = this.removeDuplicatesByPokeApiId(result);
-                    resolve(uniquePokemon);
-                };
-                request.onerror = () => reject(request.error);
-            }
-        });
-    }
-
-    private removeDuplicatesByPokeApiId(caughtPokemon: CaughtPokemon[]): CaughtPokemon[] {
-        const seen = new Map<number, CaughtPokemon>();
-
-        for (const pokemon of caughtPokemon) {
-            const pokeApiId = pokemon.pokemon.pokeApiId;
-            const existing = seen.get(pokeApiId);
-
-            if (!existing || pokemon.id < existing.id) {
-                seen.set(pokeApiId, pokemon);
-            }
-        }
-
-        return Array.from(seen.values());
-    }
-
-    async cleanupDuplicateCaughtPokemon(userId?: number | string): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['caughtPokemon'], 'readwrite');
-        const store = transaction.objectStore('caughtPokemon');
-
-        return new Promise((resolve, reject) => {
-            // Get all caught Pokemon for the user
-            let request: IDBRequest;
-            if (userId && store.indexNames.contains('userId')) {
-                const index = store.index('userId');
-                request = index.getAll(userId);
-            } else {
-                request = store.getAll();
-            }
-
-            request.onsuccess = async () => {
-                try {
-                    let allPokemon = request.result as CaughtPokemon[];
-
-                    if (userId && !store.indexNames.contains('userId')) {
-                        allPokemon = allPokemon.filter(p => p.userId === userId);
-                    }
-
-                    const grouped = new Map<number, CaughtPokemon[]>();
-                    for (const pokemon of allPokemon) {
-                        const pokeApiId = pokemon.pokemon.pokeApiId;
-                        if (!grouped.has(pokeApiId)) {
-                            grouped.set(pokeApiId, []);
-                        }
-                        grouped.get(pokeApiId)!.push(pokemon);
-                    }
-
-                    for (const [, duplicates] of grouped) {
-                        if (duplicates.length > 1) {
-                            duplicates.sort((a, b) => a.id - b.id);
-                            const toDelete = duplicates.slice(1);
-
-                            for (const duplicate of toDelete) {
-                                const deleteReq = store.delete(duplicate.id);
-                                await new Promise<void>((resolveDelete, rejectDelete) => {
-                                    deleteReq.onsuccess = () => resolveDelete();
-                                    deleteReq.onerror = () => rejectDelete(deleteReq.error);
-                                });
-                            }
-
-                        }
-                    }
-
-                    resolve();
-                } catch (error) {
-                    reject(error);
-                }
-            };
-
-            request.onerror = () => reject(request.error);
-        });
+        return this.caughtPokemonStore.getCaughtPokemon(userId);
     }
 
     async deleteCaughtPokemon(id: number): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['caughtPokemon'], 'readwrite');
-        const store = transaction.objectStore('caughtPokemon');
-
-        return new Promise((resolve, reject) => {
-            const request = store.delete(id);
-            request.onsuccess = () => {
-                resolve();
-            };
-            request.onerror = () => {
-                console.error('IndexedDB: Failed to delete Pokemon with ID:', id, 'Error:', request.error);
-                reject(request.error);
-            };
-        });
+        return this.caughtPokemonStore.deleteCaughtPokemon(id);
     }
 
-    async saveUser(user: User): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['users'], 'readwrite');
-        const store = transaction.objectStore('users');
-
-        return new Promise((resolve, reject) => {
-            const request = store.put(user);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async getUser(id: number): Promise<User | null> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['users'], 'readonly');
-        const store = transaction.objectStore('users');
-
-        return new Promise((resolve, reject) => {
-            const request = store.get(id);
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async cleanupExpiredData(): Promise<void> {
-        if (!this.db) await this.init();
-
-        const transaction = this.db!.transaction(['offlineActions'], 'readwrite');
-        const store = transaction.objectStore('offlineActions');
-        const index = store.index('timestamp');
-
-        const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-
-        return new Promise((resolve, reject) => {
-            const request = index.openCursor(IDBKeyRange.upperBound(oneDayAgo));
-
-            request.onsuccess = (event) => {
-                const cursor = (event.target as IDBRequest).result;
-                if (cursor) {
-                    const action = cursor.value as OfflineAction;
-                    if (action.status === 'completed' || action.status === 'failed') {
-                        cursor.delete();
-                    }
-                    cursor.continue();
-                } else {
-                    resolve();
-                }
-            };
-
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async storePendingAccount(account: PendingAccount): Promise<void> {
-        if (!this.db) await this.init();
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db!.transaction(['pendingAccounts'], 'readwrite');
-            const store = transaction.objectStore('pendingAccounts');
-            const request = store.add(account);
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async getPendingAccounts(): Promise<PendingAccount[]> {
-        if (!this.db) await this.init();
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db!.transaction(['pendingAccounts'], 'readonly');
-            const store = transaction.objectStore('pendingAccounts');
-            const request = store.getAll();
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async removePendingAccount(accountId: string): Promise<void> {
-        if (!this.db) await this.init();
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db!.transaction(['pendingAccounts'], 'readwrite');
-            const store = transaction.objectStore('pendingAccounts');
-            const request = store.delete(accountId);
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async clearPendingAccounts(): Promise<void> {
-        if (!this.db) await this.init();
-
-        return new Promise((resolve, reject) => {
-            const transaction = this.db!.transaction(['pendingAccounts'], 'readwrite');
-            const store = transaction.objectStore('pendingAccounts');
-            const request = store.clear();
-
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
+    async cleanupDuplicateCaughtPokemon(userId?: number | string): Promise<void> {
+        return this.caughtPokemonStore.cleanupDuplicateCaughtPokemon(userId);
     }
 
     async getFavorites(userId?: number | string): Promise<CaughtPokemon[]> {
-        const allCaught = await this.getCaughtPokemon(userId);
-        return allCaught.filter(pokemon => pokemon.isFavorite);
+        return this.caughtPokemonStore.getFavorites(userId);
     }
 
     async getPokedexStats(userId?: number | string): Promise<PokedexStats> {
-        const allCaught = await this.getCaughtPokemon(userId);
-        const totalCaught = allCaught.length;
-        const totalFavorites = allCaught.filter(pokemon => pokemon.isFavorite).length;
+        return this.caughtPokemonStore.getPokedexStats(userId);
+    }
 
-        // Calculate unique species caught
-        const uniqueSpecies = new Set(allCaught.map(pokemon => pokemon.pokemon.id)).size;
+    // ==========================================
+    // User Operations (delegate to UserStore)
+    // ==========================================
 
-        // Assuming there are 1010 Pokemon total (as of recent generations)
-        const totalAvailable = 1010;
-        const completionPercentage = totalAvailable > 0 ? (uniqueSpecies / totalAvailable) * 100 : 0;
+    async saveUser(user: User): Promise<void> {
+        return this.userStore.saveUser(user);
+    }
 
-        return {
-            totalCaught,
-            totalFavorites,
-            completionPercentage,
-            totalAvailable
-        };
+    async getUser(id: number): Promise<User | null> {
+        return this.userStore.getUser(id);
+    }
+
+    async storePendingAccount(account: PendingAccount): Promise<void> {
+        return this.userStore.storePendingAccount(account);
+    }
+
+    async getPendingAccounts(): Promise<PendingAccount[]> {
+        return this.userStore.getPendingAccounts();
+    }
+
+    async removePendingAccount(accountId: string): Promise<void> {
+        return this.userStore.removePendingAccount(accountId);
+    }
+
+    async clearPendingAccounts(): Promise<void> {
+        return this.userStore.clearPendingAccounts();
+    }
+
+    // ==========================================
+    // Offline Action Operations (delegate to OfflineActionStore)
+    // ==========================================
+
+    async isOnline(): Promise<boolean> {
+        return this.offlineActionStore.isOnline();
+    }
+
+    async savePendingAction(action: OfflineAction): Promise<void> {
+        return this.offlineActionStore.savePendingAction(action);
+    }
+
+    async getPendingActions(): Promise<OfflineAction[]> {
+        return this.offlineActionStore.getPendingActions();
+    }
+
+    async clearPendingActions(): Promise<void> {
+        return this.offlineActionStore.clearPendingActions();
+    }
+
+    async deletePendingAction(actionId: string): Promise<void> {
+        return this.offlineActionStore.deletePendingAction(actionId);
+    }
+
+    async syncWhenOnline(): Promise<void> {
+        return this.offlineActionStore.syncWhenOnline();
+    }
+
+    async cleanupExpiredData(): Promise<void> {
+        return this.offlineActionStore.cleanupExpiredData();
+    }
+
+    // ==========================================
+    // Utility Methods
+    // ==========================================
+
+    /**
+     * Clear all caches across stores
+     */
+    clearCaches(): void {
+        this.pokemonStore.clearCache();
     }
 }
 
+// Export singleton instance for backwards compatibility
 export const indexedDBStorage = new IndexedDBStorage();
+
+// Export types
+export type { PendingAccount };
