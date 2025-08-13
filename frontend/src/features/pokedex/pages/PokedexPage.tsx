@@ -188,7 +188,7 @@ export const PokedexPage: React.FC = () => {
             </div>
 
             {/* Progress Bar and Stats */}
-            <PokedexProgress isLoading={isLoading} />
+            <PokedexProgress />
 
             {/* Search and Filters */}
             <CaughtPokemonFiltersComponent

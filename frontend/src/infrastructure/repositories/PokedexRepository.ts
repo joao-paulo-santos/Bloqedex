@@ -9,92 +9,32 @@ export class PokedexRepository implements IPokedexRepository {
         pageIndex: number = 0,
         pageSize: number = 20
     ): Promise<PaginatedResponse<CaughtPokemon>> {
-        if (isOfflineAccount()) {
-            // Use IndexedDB for offline accounts
-            const allCaught = await indexedDBStorage.getCaughtPokemon(userId);
+        const response = await pokedexDataSource.getCaughtPokemon(userId, pageIndex, pageSize);
 
-            const startIndex = pageIndex * pageSize;
-            const endIndex = startIndex + pageSize;
-            const items = allCaught.slice(startIndex, endIndex);
-
-            return {
-                pokemon: items,
-                page: pageIndex + 1,
-                pageSize,
-                totalCount: allCaught.length,
-                totalPages: Math.ceil(allCaught.length / pageSize)
-            };
-        } else {
-            const response = await pokedexDataSource.getCaughtPokemon(userId, pageIndex, pageSize);
-
-            return {
-                pokemon: response.caughtPokemon,
-                page: pageIndex + 1,
-                pageSize,
-                totalCount: response.totalCount,
-                totalPages: Math.ceil(response.totalCount / pageSize)
-            };
-        }
+        return {
+            pokemon: response.caughtPokemon,
+            page: pageIndex + 1,
+            pageSize,
+            totalCount: response.totalCount,
+            totalPages: Math.ceil(response.totalCount / pageSize)
+        };
     }
 
     async getFavorites(userId: number): Promise<CaughtPokemon[]> {
-        if (isOfflineAccount()) {
-            // Use IndexedDB for offline accounts
-            return await indexedDBStorage.getFavorites(userId);
-        } else {
-            // Use API for online accounts - get all caught Pokemon and filter favorites
-            const response = await pokedexDataSource.getCaughtPokemon(userId, 0, 1000); // Get a large page for now
-            return response.caughtPokemon.filter((p: CaughtPokemon) => p.isFavorite);
-        }
+        const response = await pokedexDataSource.getCaughtPokemon(userId, 0, 1000); // Get a large page for now
+        return response.caughtPokemon.filter((p: CaughtPokemon) => p.isFavorite);
     }
 
     async catchPokemon(userId: number, pokemonId: number, notes?: string): Promise<CaughtPokemon | null> {
         try {
-            // Check if Pokemon is already caught (pokemonId here is pokeApiId)
             const existingCaught = await this.getCaughtPokemon(userId, 0, 1000); // Get a large page to check all
             const alreadyCaught = existingCaught.pokemon.find(cp => cp.pokemon.pokeApiId === pokemonId);
 
             if (alreadyCaught) {
                 throw new Error('Pokemon is already caught');
             }
+            return await pokedexDataSource.catchPokemon(userId, pokemonId, notes);
 
-            if (isOfflineAccount()) {
-                const offlineAction = {
-                    id: `catch_${Date.now()}_${pokemonId}`,
-                    type: 'catch' as const,
-                    payload: { pokemonId, notes },
-                    timestamp: Date.now(),
-                    status: 'pending' as const
-                };
-
-                await indexedDBStorage.savePendingAction(offlineAction);
-
-                // Also execute the action locally for immediate UI feedback
-                if (!userId) return null;
-
-                // First, get the actual Pokemon data from storage using pokeApiId
-                const pokemon = await indexedDBStorage.getPokemonByPokeApiId(pokemonId);
-                if (!pokemon) {
-                    console.error(`Pokemon with pokeApiId ${pokemonId} not found in storage`);
-                    return null;
-                }
-
-                // Create a caught Pokemon record with reference to the actual Pokemon
-                const caughtPokemon: CaughtPokemon = {
-                    id: -(Date.now() + pokemonId),
-                    pokemon,
-                    caughtDate: new Date().toISOString(),
-                    notes: notes || '',
-                    isFavorite: false,
-                    userId: userId || 0
-                };
-
-                await indexedDBStorage.saveCaughtPokemon(caughtPokemon);
-                return caughtPokemon;
-            } else {
-                // Use API for online accounts
-                return await pokedexDataSource.catchPokemon(userId, pokemonId, notes);
-            }
         } catch (error) {
             console.error('Failed to catch Pokemon:', error);
             throw error;
@@ -121,46 +61,8 @@ export class PokedexRepository implements IPokedexRepository {
             if (pokemonToCatch.length < pokemonIds.length) {
                 console.warn(`${pokemonIds.length - pokemonToCatch.length} Pokemon were already caught and will be skipped`);
             }
+            return await pokedexDataSource.catchBulkPokemon(userId, pokemonToCatch, notes);
 
-            if (isOfflineAccount()) {
-                const offlineAction = {
-                    id: `bulk_catch_${Date.now()}`,
-                    type: 'bulk_catch' as const,
-                    payload: {
-                        pokemonToCatch: pokemonToCatch.map(pokeApiId => ({
-                            pokemonId: pokeApiId,
-                            notes: notes || ""
-                        }))
-                    },
-                    timestamp: Date.now(),
-                    status: 'pending' as const
-                };
-
-                await indexedDBStorage.savePendingAction(offlineAction);
-
-                // Also execute the action locally for immediate UI feedback
-                if (!userId) return [];
-
-                for (const pokeApiId of pokemonToCatch) {
-                    const pokemon = await indexedDBStorage.getPokemonByPokeApiId(pokeApiId);
-                    if (pokemon) {
-                        const caught: CaughtPokemon = {
-                            id: -(Date.now() + pokeApiId),
-                            pokemon,
-                            caughtDate: new Date().toISOString(),
-                            notes: notes || '',
-                            isFavorite: false,
-                            userId: userId || 0
-                        };
-
-                        await indexedDBStorage.saveCaughtPokemon(caught);
-                        caughtPokemon.push(caught);
-                    }
-                }
-            } else {
-                // Use API for online accounts
-                return await pokedexDataSource.catchBulkPokemon(userId, pokemonToCatch, notes);
-            }
         } catch (error) {
             console.error('Failed to bulk catch Pokemon:', error);
             throw error;
@@ -169,6 +71,7 @@ export class PokedexRepository implements IPokedexRepository {
         return caughtPokemon;
     }
 
+    //TODO: pass offline account logic to datasource
     async releasePokemon(userId: number, caughtPokemonId: number): Promise<boolean> {
         try {
             if (isOfflineAccount()) {
@@ -223,90 +126,49 @@ export class PokedexRepository implements IPokedexRepository {
 
     async releaseBulkPokemon(userId: number, caughtPokemonIds: number[]): Promise<number[]> {
         try {
-            if (isOfflineAccount()) {
-                // For offline accounts, convert caught Pokemon IDs to Pokemon API IDs
-                const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(userId);
+            const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(userId);
+            const pokeApiIds: number[] = [];
+            const pokemonToDelete: { caughtId: number; pokeApiId: number }[] = []; // Store both IDs for deletion
 
-                const pokeApiIds: number[] = [];
-                const successfulIds: number[] = [];
-
-                for (const caughtId of caughtPokemonIds) {
-                    const pokemon = allCaughtPokemon.find(cp => cp.id === caughtId);
-                    if (pokemon) {
-                        // Store the Pokemon API ID for the server call
-                        pokeApiIds.push(pokemon.pokemon.pokeApiId);
-
-                        // Delete from local storage using pokeApiId
-                        try {
-                            await indexedDBStorage.deleteCaughtPokemon(userId, pokemon.pokemon.pokeApiId);
-                            successfulIds.push(caughtId);
-                        } catch (error) {
-                            console.error(`Failed to release Pokemon ${caughtId} from IndexedDB:`, error);
-                        }
-                    } else {
-                        console.warn('Could not find caught Pokemon with ID:', caughtId);
-                    }
+            for (const caughtId of caughtPokemonIds) {
+                const pokemon = allCaughtPokemon.find(cp => cp.id === caughtId);
+                if (pokemon) {
+                    pokeApiIds.push(pokemon.pokemon.pokeApiId);
+                    pokemonToDelete.push({ caughtId, pokeApiId: pokemon.pokemon.pokeApiId });
+                } else {
+                    console.warn('Could not find caught Pokemon with ID (online):', caughtId);
                 }
-
-                // Create offline action with Pokemon API IDs
-                if (pokeApiIds.length > 0) {
-                    const offlineAction = {
-                        id: `bulk_release_${Date.now()}`,
-                        type: 'bulk_release' as const,
-                        payload: { pokeApiIds },
-                        timestamp: Date.now(),
-                        status: 'pending' as const
-                    };
-
-                    await indexedDBStorage.savePendingAction(offlineAction);
-                }
-
-                return successfulIds;
-            } else {
-                // For online accounts, convert caught Pokemon IDs to Pokemon API IDs
-                const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(userId);
-                const pokeApiIds: number[] = [];
-                const pokemonToDelete: { caughtId: number; pokeApiId: number }[] = []; // Store both IDs for deletion
-
-                for (const caughtId of caughtPokemonIds) {
-                    const pokemon = allCaughtPokemon.find(cp => cp.id === caughtId);
-                    if (pokemon) {
-                        pokeApiIds.push(pokemon.pokemon.pokeApiId);
-                        pokemonToDelete.push({ caughtId, pokeApiId: pokemon.pokemon.pokeApiId });
-                    } else {
-                        console.warn('Could not find caught Pokemon with ID (online):', caughtId);
-                    }
-                }
-
-
-                // Make API call first
-                await pokedexDataSource.releaseBulkPokemon(userId, pokeApiIds);
-
-                const successfulIds: number[] = [];
-                for (const pokemon of pokemonToDelete) {
-                    try {
-                        await indexedDBStorage.deleteCaughtPokemon(userId, pokemon.pokeApiId);
-                        successfulIds.push(pokemon.caughtId);
-
-                        // Verify the deletion worked by checking if it's still there
-                        const remainingPokemon = await indexedDBStorage.getCaughtPokemon(userId);
-                        const stillExists = remainingPokemon.find(cp => cp.pokemon.pokeApiId === pokemon.pokeApiId);
-                        if (stillExists) {
-                            console.error('ERROR: Pokemon', pokemon.pokeApiId, 'still exists in IndexedDB after deletion!');
-                        }
-                    } catch (error) {
-                        console.error(`Failed to delete Pokemon ${pokemon.caughtId} from IndexedDB:`, error);
-                    }
-                }
-
-                return successfulIds;
             }
+
+
+            // Make API call first
+            await pokedexDataSource.releaseBulkPokemon(userId, pokeApiIds);
+
+            const successfulIds: number[] = [];
+            for (const pokemon of pokemonToDelete) {
+                try {
+                    await indexedDBStorage.deleteCaughtPokemon(userId, pokemon.pokeApiId);
+                    successfulIds.push(pokemon.caughtId);
+
+                    // Verify the deletion worked by checking if it's still there
+                    const remainingPokemon = await indexedDBStorage.getCaughtPokemon(userId);
+                    const stillExists = remainingPokemon.find(cp => cp.pokemon.pokeApiId === pokemon.pokeApiId);
+                    if (stillExists) {
+                        console.error('ERROR: Pokemon', pokemon.pokeApiId, 'still exists in IndexedDB after deletion!');
+                    }
+                } catch (error) {
+                    console.error(`Failed to delete Pokemon ${pokemon.caughtId} from IndexedDB:`, error);
+                }
+            }
+
+            return successfulIds;
         } catch (error) {
             console.error('Failed to bulk release Pokemon:', error);
             return [];
         }
     }
 
+    //TODO: pass offline account logic to datasource
     async updateCaughtPokemon(
         userId: number,
         caughtPokemonId: number,
@@ -354,6 +216,7 @@ export class PokedexRepository implements IPokedexRepository {
         }
     }
 
+    //TODO: pass offline account logic to datasource
     async getStats(userId: number): Promise<PokedexStats | null> {
         try {
             if (isOfflineAccount()) {
@@ -369,6 +232,7 @@ export class PokedexRepository implements IPokedexRepository {
         }
     }
 
+    //TODO: pass offline account logic to datasource
     async clearUserData(userId: number): Promise<boolean> {
         try {
             // Only clear data for offline accounts

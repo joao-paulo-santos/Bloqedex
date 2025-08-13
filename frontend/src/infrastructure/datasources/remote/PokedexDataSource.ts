@@ -2,11 +2,12 @@ import type { CaughtPokemon, PokedexStats, OfflineAction } from '../../../core/t
 import { BaseDataSource } from './BaseDataSource';
 import { indexedDBStorage } from '../../storage/IndexedDBStorage';
 import { API_PATHS } from '../../../config/uriPaths';
+import { isOfflineAccount } from '../../../common/utils/userContext';
 
 // Data source for Pokedex operations (caught Pokemon management)
 export class PokedexDataSource extends BaseDataSource {
     async getCaughtPokemon(userId: number, pageIndex: number = 0, pageSize: number = 20): Promise<{ caughtPokemon: CaughtPokemon[], totalCount: number, hasNextPage: boolean, hasPreviousPage: boolean }> {
-        if (this.isOnline()) {
+        if (this.isOnline() && !isOfflineAccount()) {
             try {
                 const pendingActions = await indexedDBStorage.getPendingActions();
                 const hasPendingPokedexActions = pendingActions.some(action =>
@@ -62,7 +63,7 @@ export class PokedexDataSource extends BaseDataSource {
     async catchPokemon(userId: number, pokemonId: number, notes?: string): Promise<CaughtPokemon> {
         const payload = { pokemonId, notes };
 
-        if (this.isOnline()) {
+        if (this.isOnline() && !isOfflineAccount()) {
             try {
                 const response = await this.client.post<CaughtPokemon>(API_PATHS.POKEDEX.CATCH, payload);
 
@@ -116,7 +117,7 @@ export class PokedexDataSource extends BaseDataSource {
         };
 
         // If online, make API call
-        if (this.isOnline()) {
+        if (this.isOnline() && !isOfflineAccount()) {
             try {
                 const response = await this.client.post<CaughtPokemon[]>(API_PATHS.POKEDEX.CATCH_BULK, payload);
 
@@ -219,7 +220,7 @@ export class PokedexDataSource extends BaseDataSource {
         const payload = { pokeApiIds };
 
         // If online, make API call
-        if (this.isOnline()) {
+        if (this.isOnline() && !isOfflineAccount()) {
             try {
                 await this.client.delete(API_PATHS.POKEDEX.RELEASE_BULK, { data: payload });
                 return;

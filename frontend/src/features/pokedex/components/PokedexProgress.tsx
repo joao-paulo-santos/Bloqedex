@@ -6,24 +6,10 @@ interface PokedexProgressProps {
     isLoading?: boolean;
 }
 
-export const PokedexProgress: React.FC<PokedexProgressProps> = ({ isLoading }) => {
+export const PokedexProgress: React.FC<PokedexProgressProps> = () => {
     const { totalPokemons } = usePokemonStore();
     const { caughtPokemon } = usePokedexStore();
 
-    if (isLoading) {
-        return (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                <div className="animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded mb-4"></div>
-                    <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                    <div className="flex space-x-4">
-                        <div className="h-4 bg-gray-200 rounded flex-1"></div>
-                        <div className="h-4 bg-gray-200 rounded flex-1"></div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     if (!totalPokemons) {
         return null;

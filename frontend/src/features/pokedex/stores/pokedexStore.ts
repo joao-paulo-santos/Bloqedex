@@ -356,6 +356,7 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
         // Automatically fetch caught Pokemon when userId is set
         if (userId) {
             get().fetchCaughtPokemon();
+            get().fetchStats();
         }
     }
 }));

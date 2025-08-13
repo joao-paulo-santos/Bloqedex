@@ -215,7 +215,8 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
             set({
                 pokemonMap,
                 lastConsecutiveId,
-                isLoading: false
+                isLoading: false,
+                totalPokemons: cachedPokemon.length,
             });
         } catch (error) {
             console.error('Failed to initialize Pokemon store:', error);

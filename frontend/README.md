@@ -4,39 +4,45 @@ A modern, offline-first React frontend for the Bloqedex Pokédex application, bu
 
 ## Architecture
 
-This project follows a clean, feature-based architecture with strong separation of concerns:
+This project follows a clean, feature-based architecture with strong separation of concerns and event-driven communication:
 
 ```
 src/
 ├── components/           # Shared UI components
-│   ├── common/          # Common reusable components
+│   ├── common/          # Common reusable components (Icons, Toast, OfflineIndicator)
 │   ├── layout/          # Layout-specific components
-│   └── ui/              # Basic UI building blocks
+│   └── ui/              # Basic UI building blocks (LoadingSpinner, ErrorMessage)
 ├── features/            # Feature-based modules
 │   ├── auth/           # Authentication & user management
+│   │   ├── components/ # Auth-specific components
+│   │   ├── pages/      # Login, Register pages
+│   │   └── stores/     # Authentication state management
 │   ├── pokemon/        # Pokémon browsing & management
-│   ├── pokedex/        # User's caught Pokémon
+│   ├── pokedex/        # User's caught Pokémon collection
 │   └── sharing/        # Pokémon sharing functionality
-├── infrastructure/     # External concerns
-│   ├── api/            # API clients & sync management
-│   ├── repositories/   # Data access layer
+├── infrastructure/     # External concerns & data layer
+│   ├── datasources/    # Data source management & sync
+│   ├── repositories/   # Data access layer (Repository pattern)
 │   └── storage/        # Offline storage (IndexedDB)
-├── core/               # Business logic & types
-│   ├── entities/       # Domain models
+├── core/               # Business logic & domain models
+│   ├── entities/       # Domain models (Pokemon, User, CaughtPokemon)
 │   ├── types/          # TypeScript type definitions
-│   └── usecases/       # Business use cases
-├── stores/             # Global state management (Zustand)
-├── config/             # Configuration files
-└── utils/              # Utility functions
+│   └── usecases/       # Business use cases & application logic
+├── config/             # Configuration files (API endpoints, app config)
+└── common/             # Shared utilities & hooks
+    ├── hooks/          # Custom React hooks
+    └── utils/          # Utility functions & helpers
 ```
 
 ### Key Architectural Patterns
 
-1. **Feature-Based Architecture** - Self-contained feature modules
-2. **Repository Pattern** - Abstract data access layer
-3. **Use Cases Pattern** - Business logic encapsulation
-4. **Clean Architecture** - Dependency inversion principles
-5. **Offline-First Design** - Local storage with smart synchronization
+1. **Event-Driven Architecture** - Decoupled communication via EventBus system
+2. **Feature-Based Architecture** - Self-contained feature modules with clear boundaries
+3. **Repository Pattern** - Abstract data access layer with multiple data sources
+4. **Use Cases Pattern** - Business logic encapsulation and domain separation
+5. **Clean Architecture** - Dependency inversion with clear layer separation
+6. **Offline-First Design** - Local storage with intelligent synchronization
+7. **State Management Pattern** - Zustand stores with event-driven cross-store communication
 
 ## Features
 

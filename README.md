@@ -93,17 +93,24 @@ After speaking with Pokémon Trainers, we identified the need for a centralized 
 ```
 bloqedex/
 ├── frontend/            # React TypeScript Frontend
-│   ├── src/
-│   │   ├── components/    # Shared UI components
-│   │   ├── features/      # Feature-based modules
-│   │   │   ├── auth/      # Authentication & user management
-│   │   │   ├── pokemon/   # Pokémon browsing & management
-│   │   │   ├── pokedex/   # User's caught Pokémon
-│   │   │   └── sharing/   # Pokémon sharing functionality
-│   │   ├── infrastructure/ # External concerns (API, storage)
-│   │   ├── stores/        # Zustand state management
-│   │   └── core/          # Business logic & types
-│   └── public/            # Static assets
+│      ├── components/           # Shared UI components
+│      ├── features/            # Feature-based modules
+│      │   ├── auth/           # Authentication & user management
+│      │   │   ├── components/ # Auth-specific components
+│      │   │   ├── pages/      # Login, Register pages
+│      │   │   └── stores/     # Authentication state management
+│      │   ├── pokemon/        # Pokémon browsing & management
+│      │   ├── pokedex/        # User's caught Pokémon collection
+│      │   └── sharing/        # Pokémon sharing functionality
+│      ├── infrastructure/     # External concerns & data layer
+│      │   ├── datasources/    # Data source management & sync
+│      │   ├── repositories/   # Data access layer (Repository pattern)
+│      │   └── storage/        # Offline storage (IndexedDB)
+│      ├── core/               # Business logic & domain models
+│      │   ├── entities/       # Domain models (Pokemon, User, CaughtPokemon)
+│      │   ├── types/          # TypeScript type definitions
+│      │   └── usecases/       # Business use cases & application logic
+│      ├── config/             # Configuration files (API endpoints, app config)
 │
 └── backend/             # Backend (.NET 8 API)
     ├── BloqedexApi/     # Web API layer

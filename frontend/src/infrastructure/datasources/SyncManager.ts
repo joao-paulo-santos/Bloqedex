@@ -22,7 +22,14 @@ export class SyncManager extends BaseDataSource {
 
         const pendingActions = await indexedDBStorage.getPendingActions();
 
-        for (const action of pendingActions) {
+        // Sort pending actions by timestamp to ensure proper chronological order
+        const sortedActions = pendingActions.sort((a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+
+        for (let i = 0; i < sortedActions.length; i++) {
+            const action = sortedActions[i];
+
             try {
                 switch (action.type) {
                     case 'catch': {
@@ -69,6 +76,12 @@ export class SyncManager extends BaseDataSource {
                 }
 
                 await indexedDBStorage.deletePendingAction(action.id);
+
+                // Add a small delay between actions to prevent overwhelming the server
+                // Skip delay for the last action
+                if (i < sortedActions.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+                }
 
             } catch (error) {
                 console.warn(`Failed to sync action ${action.id}:`, error);

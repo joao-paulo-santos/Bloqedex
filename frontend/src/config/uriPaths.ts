@@ -40,9 +40,11 @@ export const POKEDEX_PATHS = {
  * Sharing-related endpoints
  */
 export const SHARING_PATHS = {
-    CREATE: '/sharing/create',
-    GET_BY_TOKEN: (shareToken: string) => `/sharing/${shareToken}`,
-    MY_SHARES: '/sharing/my-shares',
+    CREATE: '/Sharing',
+    GET_BY_TOKEN: (shareToken: string) => `/Sharing/${shareToken}`,
+    MY_SHARES: '/Sharing/my-shares',
+    UPDATE: (shareId: string) => `/Sharing/${shareId}`,
+    DELETE: (shareId: string) => `/Sharing/${shareId}`,
 } as const;
 
 /**

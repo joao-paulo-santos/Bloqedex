@@ -219,7 +219,6 @@ export const useAuthStore = create<AuthState>()(
 
             loadUser: async () => {
                 const persistedState = JSON.parse(localStorage.getItem('bloqedex-auth-storage') || '{}');
-                console.log(persistedState);
 
                 if (persistedState?.state?.isAuthenticated && persistedState?.state?.user) {
                     set({

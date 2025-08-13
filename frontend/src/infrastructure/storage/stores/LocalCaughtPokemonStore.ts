@@ -86,10 +86,8 @@ export class LocalCaughtPokemonStore extends IndexedDBBase {
         // Calculate unique species caught
         const uniqueSpecies = new Set(allCaught.map(pokemon => pokemon.pokemon.id)).size;
 
-        // Assuming there are 1010 Pokemon total (as of recent generations)
-        const totalAvailable = 1010;
+        const totalAvailable = 1025;
         const completionPercentage = totalAvailable > 0 ? (uniqueSpecies / totalAvailable) * 100 : 0;
-
         return {
             totalCaught,
             totalFavorites,
