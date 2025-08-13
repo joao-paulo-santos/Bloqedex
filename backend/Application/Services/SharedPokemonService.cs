@@ -14,18 +14,23 @@ namespace Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<SharedPokemon?> CreateSinglePokemonShareAsync(int userId, int caughtPokemonId, string? title = null, string? description = null, DateTime? expiresAt = null, int? maxViews = null)
+        public async Task<SharedPokemon?> CreateSinglePokemonShareAsync(int userId, int pokeApiId, string? title = null, string? description = null, DateTime? expiresAt = null, int? maxViews = null)
         {
-            // Permission Check
-            var caughtPokemon = await _unitOfWork.CaughtPokemonRepository.GetCaughtPokemonByIdAsync(caughtPokemonId);
-            if (caughtPokemon == null || caughtPokemon.UserId != userId)
+            // Get the Pokemon by PokeApiId first
+            var pokemon = await _unitOfWork.PokemonRepository.GetPokemonByPokeApiIdAsync(pokeApiId);
+            if (pokemon == null)
+                return null;
+
+            // Permission Check - verify user has caught this Pokemon
+            var caughtPokemon = await _unitOfWork.CaughtPokemonRepository.GetUserCaughtPokemonAsync(userId, pokemon.Id);
+            if (caughtPokemon == null)
                 return null;
 
             var shareToken = GenerateShareToken();
             var sharedPokemon = new SharedPokemon
             {
                 UserId = userId,
-                CaughtPokemonId = caughtPokemonId,
+                CaughtPokemonId = caughtPokemon.Id, // Still store the internal ID for the relationship
                 ShareToken = shareToken,
                 ShareType = ShareType.SinglePokemon,
                 Title = title,

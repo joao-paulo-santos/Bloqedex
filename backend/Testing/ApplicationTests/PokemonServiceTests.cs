@@ -246,17 +246,17 @@ namespace Testing.ApplicationTests
         }
 
         [Fact]
-        // Test that the total Pokemon count is correctly retrieved from the repository
-        public async Task GetTotalPokemonCountAsync_ReturnsRepositoryCount()
+        // Test that the total Pokemon count is correctly retrieved from the PokeAPI service
+        public async Task GetTotalPokemonCountAsync_ReturnsPokeApiServiceCount()
         {
             var expectedCount = 1025;
-            _mockPokemonRepository.Setup(x => x.GetTotalPokemonCountAsync())
+            _mockPokeApiService.Setup(x => x.GetTotalPokemonCountAsync())
                 .ReturnsAsync(expectedCount);
 
             var result = await _pokemonService.GetTotalPokemonCountAsync();
 
             Assert.Equal(expectedCount, result);
-            _mockPokemonRepository.Verify(x => x.GetTotalPokemonCountAsync(), Times.Once);
+            _mockPokeApiService.Verify(x => x.GetTotalPokemonCountAsync(), Times.Once);
         }
 
         [Fact]

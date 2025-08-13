@@ -35,12 +35,12 @@ namespace BloqedexApi.Controllers
 
             if (request.ShareType == ShareType.SinglePokemon)
             {
-                if (!request.CaughtPokemonId.HasValue)
-                    return BadRequest("CaughtPokemonId is required for single Pokemon shares");
+                if (!request.PokeApiId.HasValue)
+                    return BadRequest("PokeApiId is required for single Pokemon shares");
 
                 sharedPokemon = await _sharedPokemonService.CreateSinglePokemonShareAsync(
                     userId.Value,
-                    request.CaughtPokemonId.Value,
+                    request.PokeApiId.Value,
                     request.Title,
                     request.Description,
                     request.ExpiresAt,

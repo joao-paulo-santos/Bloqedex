@@ -5,7 +5,10 @@ namespace BloqedexApi.DTOs
     public class CreateShareRequest
     {
         public ShareType ShareType { get; set; }
-        public int? CaughtPokemonId { get; set; }
+        /// <summary>
+        /// The PokeAPI ID of the Pokemon to share (e.g., 25 for Pikachu, 1 for Bulbasaur). Only used for SinglePokemon shares.
+        /// </summary>
+        public int? PokeApiId { get; set; }
         public string? Title { get; set; }
         public string? Description { get; set; }
         public DateTime? ExpiresAt { get; set; }

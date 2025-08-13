@@ -12,6 +12,7 @@ namespace Testing.ApplicationTests
         private readonly Mock<ISharedPokemonRepository> _mockSharedPokemonRepository;
         private readonly Mock<IUserRepository> _mockUserRepository;
         private readonly Mock<ICaughtPokemonRepository> _mockCaughtPokemonRepository;
+        private readonly Mock<IPokemonRepository> _mockPokemonRepository;
         private readonly SharedPokemonService _sharedPokemonService;
 
         public SharedPokemonServiceTests()
@@ -20,10 +21,12 @@ namespace Testing.ApplicationTests
             _mockSharedPokemonRepository = new Mock<ISharedPokemonRepository>();
             _mockUserRepository = new Mock<IUserRepository>();
             _mockCaughtPokemonRepository = new Mock<ICaughtPokemonRepository>();
+            _mockPokemonRepository = new Mock<IPokemonRepository>();
 
             _mockUnitOfWork.Setup(uow => uow.SharedPokemonRepository).Returns(_mockSharedPokemonRepository.Object);
             _mockUnitOfWork.Setup(uow => uow.UserRepository).Returns(_mockUserRepository.Object);
             _mockUnitOfWork.Setup(uow => uow.CaughtPokemonRepository).Returns(_mockCaughtPokemonRepository.Object);
+            _mockUnitOfWork.Setup(uow => uow.PokemonRepository).Returns(_mockPokemonRepository.Object);
 
             _sharedPokemonService = new SharedPokemonService(_mockUnitOfWork.Object);
         }
@@ -86,64 +89,63 @@ namespace Testing.ApplicationTests
         public async Task CreateSinglePokemonShareAsync_ValidCaughtPokemon_ReturnsSharedPokemon()
         {
             var userId = 1;
-            var caughtPokemonId = 1;
+            var pokeApiId = 25;
+            var pokemon = new Pokemon { Id = 1, PokeApiId = pokeApiId, Name = "Pikachu" };
             var caughtPokemon = new CaughtPokemon
             {
-                Id = caughtPokemonId,
+                Id = 1,
                 UserId = userId,
-                PokemonId = 25,
+                PokemonId = pokemon.Id,
                 Notes = "My Pikachu"
             };
 
-            _mockCaughtPokemonRepository.Setup(r => r.GetCaughtPokemonByIdAsync(caughtPokemonId))
+            _mockPokemonRepository.Setup(r => r.GetPokemonByPokeApiIdAsync(pokeApiId))
+                .ReturnsAsync(pokemon);
+            _mockCaughtPokemonRepository.Setup(r => r.GetUserCaughtPokemonAsync(userId, pokemon.Id))
                 .ReturnsAsync(caughtPokemon);
             _mockSharedPokemonRepository.Setup(r => r.AddSharedPokemonAsync(It.IsAny<SharedPokemon>()))
                 .ReturnsAsync((SharedPokemon sp) => sp);
             _mockUnitOfWork.Setup(uow => uow.SaveChangesAsync())
                 .ReturnsAsync(1);
 
-            var result = await _sharedPokemonService.CreateSinglePokemonShareAsync(userId, caughtPokemonId, "My Pikachu Share");
+            var result = await _sharedPokemonService.CreateSinglePokemonShareAsync(userId, pokeApiId, "My Pikachu Share");
 
             Assert.NotNull(result);
             Assert.Equal(ShareType.SinglePokemon, result.ShareType);
             Assert.Equal(userId, result.UserId);
-            Assert.Equal(caughtPokemonId, result.CaughtPokemonId);
+            Assert.Equal(caughtPokemon.Id, result.CaughtPokemonId);
             Assert.Equal("My Pikachu Share", result.Title);
         }
 
         [Fact]
-        // Test that creating a single Pokemon share for a non-existent caught Pokemon returns null
+        // Test that creating a single Pokemon share for a non-existent Pokemon returns null
         public async Task CreateSinglePokemonShareAsync_NonExistentCaughtPokemon_ReturnsNull()
         {
             var userId = 1;
-            var caughtPokemonId = 9999;
+            var pokeApiId = 9999;
 
-            _mockCaughtPokemonRepository.Setup(r => r.GetCaughtPokemonByIdAsync(caughtPokemonId))
-                .ReturnsAsync((CaughtPokemon?)null);
+            _mockPokemonRepository.Setup(r => r.GetPokemonByPokeApiIdAsync(pokeApiId))
+                .ReturnsAsync((Pokemon?)null);
 
-            var result = await _sharedPokemonService.CreateSinglePokemonShareAsync(userId, caughtPokemonId, "Non-existent Share");
+            var result = await _sharedPokemonService.CreateSinglePokemonShareAsync(userId, pokeApiId, "Non-existent Share");
 
             Assert.Null(result);
         }
 
         [Fact]
-        // Test that creating a single Pokemon share for another user's Pokemon returns null
+        // Test that creating a single Pokemon share for a Pokemon not caught by user returns null
         public async Task CreateSinglePokemonShareAsync_UnauthorizedAccess_ReturnsNull()
         {
             var userId = 1;
-            var otherUserId = 2;
-            var caughtPokemonId = 1;
-            var caughtPokemon = new CaughtPokemon
-            {
-                Id = caughtPokemonId,
-                UserId = otherUserId,
-                PokemonId = 25
-            };
+            var pokeApiId = 25;
+            var pokemon = new Pokemon { Id = 1, PokeApiId = pokeApiId, Name = "Pikachu" };
 
-            _mockCaughtPokemonRepository.Setup(r => r.GetCaughtPokemonByIdAsync(caughtPokemonId))
-                .ReturnsAsync(caughtPokemon);
+            _mockPokemonRepository.Setup(r => r.GetPokemonByPokeApiIdAsync(pokeApiId))
+                .ReturnsAsync(pokemon);
+            _mockCaughtPokemonRepository.Setup(r => r.GetUserCaughtPokemonAsync(userId, pokemon.Id))
+                .ReturnsAsync((CaughtPokemon?)null); // User hasn't caught this Pokemon
 
-            var result = await _sharedPokemonService.CreateSinglePokemonShareAsync(userId, caughtPokemonId, "Unauthorized Share");
+            var result = await _sharedPokemonService.CreateSinglePokemonShareAsync(userId, pokeApiId, "Unauthorized Share");
 
             Assert.Null(result);
         }

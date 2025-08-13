@@ -37,7 +37,7 @@ namespace Testing.ControllerTests
             var request = new CreateShareRequest
             {
                 ShareType = ShareType.SinglePokemon,
-                CaughtPokemonId = 1,
+                PokeApiId = 25,
                 Title = "My Favorite Pokemon",
                 Description = "Check out my Pikachu!",
                 ExpiresAt = DateTime.UtcNow.AddDays(7),
@@ -61,7 +61,7 @@ namespace Testing.ControllerTests
             SetupHttpContext();
 
             _mockSharedPokemonService.Setup(s => s.CreateSinglePokemonShareAsync(
-                userId, request.CaughtPokemonId.Value, request.Title, request.Description, request.ExpiresAt, request.MaxViews))
+                userId, request.PokeApiId.Value, request.Title, request.Description, request.ExpiresAt, request.MaxViews))
                 .ReturnsAsync(sharedPokemon);
 
             var result = await _controller.CreateShare(request);
@@ -131,7 +131,7 @@ namespace Testing.ControllerTests
             var result = await _controller.CreateShare(request);
 
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
-            Assert.Equal("CaughtPokemonId is required for single Pokemon shares", badRequestResult.Value);
+            Assert.Equal("PokeApiId is required for single Pokemon shares", badRequestResult.Value);
         }
 
         // Tests creating share when service fails returns bad request
@@ -142,14 +142,14 @@ namespace Testing.ControllerTests
             var request = new CreateShareRequest
             {
                 ShareType = ShareType.SinglePokemon,
-                CaughtPokemonId = 1,
+                PokeApiId = 25,
                 Title = "My Pokemon"
             };
 
             SetupUserContext(userId);
 
             _mockSharedPokemonService.Setup(s => s.CreateSinglePokemonShareAsync(
-                userId, request.CaughtPokemonId.Value, request.Title, request.Description, request.ExpiresAt, request.MaxViews))
+                userId, request.PokeApiId.Value, request.Title, request.Description, request.ExpiresAt, request.MaxViews))
                 .ReturnsAsync((SharedPokemon?)null);
 
             var result = await _controller.CreateShare(request);
@@ -165,7 +165,7 @@ namespace Testing.ControllerTests
             var request = new CreateShareRequest
             {
                 ShareType = ShareType.SinglePokemon,
-                CaughtPokemonId = 1
+                PokeApiId = 25
             };
 
             _controller.ControllerContext = new ControllerContext
