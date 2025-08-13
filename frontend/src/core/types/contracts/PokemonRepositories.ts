@@ -19,16 +19,17 @@ export interface IPokemonRepository {
 }
 
 export interface IPokedexRepository {
-    getCaughtPokemon(pageIndex?: number, pageSize?: number): Promise<PaginatedResponse<CaughtPokemon>>;
-    getFavorites(): Promise<CaughtPokemon[]>;
-    catchPokemon(pokemonId: number, notes?: string): Promise<CaughtPokemon | null>;
-    catchBulkPokemon(pokemonIds: number[], notes?: string): Promise<CaughtPokemon[]>;
-    releasePokemon(caughtPokemonId: number): Promise<boolean>;
-    releaseBulkPokemon(caughtPokemonIds: number[]): Promise<number[]>;
+    getCaughtPokemon(userId: number, pageIndex?: number, pageSize?: number): Promise<PaginatedResponse<CaughtPokemon>>;
+    getFavorites(userId: number): Promise<CaughtPokemon[]>;
+    catchPokemon(userId: number, pokemonId: number, notes?: string): Promise<CaughtPokemon | null>;
+    catchBulkPokemon(userId: number, pokemonIds: number[], notes?: string): Promise<CaughtPokemon[]>;
+    releasePokemon(userId: number, caughtPokemonId: number): Promise<boolean>;
+    releaseBulkPokemon(userId: number, caughtPokemonIds: number[]): Promise<number[]>;
     updateCaughtPokemon(
-        caughtPokemonId: number,
+        userId: number,
+        pokemonApiId: number,
         updates: { notes?: string; isFavorite?: boolean }
     ): Promise<CaughtPokemon | null>;
-    getStats(): Promise<PokedexStats | null>;
-    clearUserData(userId?: number | string): Promise<boolean>;
+    getStats(userId: number): Promise<PokedexStats | null>;
+    clearUserData(userId: number): Promise<boolean>;
 }

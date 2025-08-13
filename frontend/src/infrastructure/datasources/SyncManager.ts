@@ -14,6 +14,12 @@ export class SyncManager extends BaseDataSource {
             return;
         }
 
+        const currentUserId = getCurrentUserId();
+        if (!currentUserId) {
+            console.warn('No user ID available for sync');
+            return;
+        }
+
         const pendingActions = await indexedDBStorage.getPendingActions();
 
         for (const action of pendingActions) {
@@ -21,7 +27,7 @@ export class SyncManager extends BaseDataSource {
                 switch (action.type) {
                     case 'catch': {
                         const payload = action.payload as { pokemonId: number; notes?: string };
-                        const catchResponse = await pokedexDataSource.catchPokemon(payload.pokemonId, payload.notes);
+                        const catchResponse = await pokedexDataSource.catchPokemon(currentUserId, payload.pokemonId, payload.notes);
                         await this.cleanupAndSaveCatchResponse(catchResponse, payload.pokemonId);
                         break;
                     }
@@ -30,7 +36,7 @@ export class SyncManager extends BaseDataSource {
                         const pokemonIds = payload.pokemonToCatch.map(p => p.pokemonId);
                         const notes = payload.pokemonToCatch[0]?.notes;
 
-                        const bulkCatchResponse = await pokedexDataSource.catchBulkPokemon(pokemonIds, notes);
+                        const bulkCatchResponse = await pokedexDataSource.catchBulkPokemon(currentUserId, pokemonIds, notes);
                         for (const caught of bulkCatchResponse) {
                             await this.cleanupAndSaveCatchResponse(caught, caught.pokemon.pokeApiId);
                         }
@@ -38,7 +44,7 @@ export class SyncManager extends BaseDataSource {
                     }
                     case 'release': {
                         const payload = action.payload as { pokeApiId: number };
-                        await pokedexDataSource.releasePokemon(payload.pokeApiId);
+                        await pokedexDataSource.releasePokemon(currentUserId, payload.pokeApiId);
                         break;
                     }
                     case 'bulk_release': {
@@ -47,14 +53,14 @@ export class SyncManager extends BaseDataSource {
                         const numericIds = payload.pokeApiIds.map(id => Number(id));
 
                         if (numericIds.length > 0) {
-                            await pokedexDataSource.releaseBulkPokemon(numericIds);
+                            await pokedexDataSource.releaseBulkPokemon(currentUserId, numericIds);
                         }
                         break;
                     }
                     case 'update': {
                         const payload = action.payload as { pokemonApiId: number; notes?: string; isFavorite?: boolean };
 
-                        const updateResponse = await pokedexDataSource.updateCaughtPokemon(payload.pokemonApiId, payload);
+                        const updateResponse = await pokedexDataSource.updateCaughtPokemon(currentUserId, payload.pokemonApiId, payload);
                         if (updateResponse) {
                             await indexedDBStorage.saveCaughtPokemon(updateResponse);
                         }
@@ -76,16 +82,20 @@ export class SyncManager extends BaseDataSource {
 
     private async cleanupAndSaveCatchResponse(caughtPokemon: CaughtPokemon, pokeApiId: number): Promise<void> {
         const currentUserId = getCurrentUserId();
-        const existingCaught = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
+        if (!currentUserId) {
+            await indexedDBStorage.saveCaughtPokemon(caughtPokemon);
+            return;
+        }
+
+        const existingCaught = await indexedDBStorage.getCaughtPokemon(currentUserId);
 
         const tempEntries = existingCaught.filter(cp =>
             cp.pokemon.pokeApiId === pokeApiId &&
-            cp.id !== caughtPokemon.id &&
-            cp.id > 1000000000
+            cp.id !== caughtPokemon.id
         );
 
         for (const tempEntry of tempEntries) {
-            await indexedDBStorage.deleteCaughtPokemon(tempEntry.id);
+            await indexedDBStorage.deleteCaughtPokemon(currentUserId, tempEntry.pokemon.pokeApiId);
         }
 
         await indexedDBStorage.saveCaughtPokemon(caughtPokemon);

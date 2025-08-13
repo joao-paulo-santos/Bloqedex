@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import type { CaughtPokemon, PokedexStats, CaughtPokemonFilters } from '../../../core/types';
 import { PokedexUseCases } from '../../../core/usecases';
 import { pokedexRepository } from '../../../infrastructure/repositories';
+import { eventBus } from '../../../common/utils/eventBus';
 
 interface PokedexState {
     caughtPokemon: CaughtPokemon[];
@@ -10,6 +11,7 @@ interface PokedexState {
     stats: PokedexStats | null;
     isLoading: boolean;
     error: string | null;
+    currentUserId: number | null;
 
     fetchCaughtPokemon: () => Promise<void>;
     fetchFavorites: () => Promise<void>;
@@ -24,6 +26,7 @@ interface PokedexState {
     ) => Promise<void>;
     clearError: () => void;
     cleanupDuplicates: () => Promise<void>;
+    setUserId: (userId: number | null) => void;
 }
 
 const pokedexUseCases = new PokedexUseCases(pokedexRepository);
@@ -34,24 +37,26 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
     stats: null,
     isLoading: false,
     error: null,
+    currentUserId: null,
 
     fetchCaughtPokemon: async () => {
         set({ isLoading: true, error: null });
 
         try {
-            const result = await pokedexUseCases.getCaughtPokemon();
+            const { currentUserId } = get();
+            if (!currentUserId) {
+                throw new Error('User not authenticated');
+            }
+
+            const result = await pokedexUseCases.getCaughtPokemon(currentUserId);
             set({
                 caughtPokemon: result.pokemon,
                 isLoading: false
             });
 
-            import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                const pokemonStore = usePokemonStore.getState();
-                result.pokemon.forEach(caughtPokemon => {
-                    pokemonStore.updatePokemonCaughtStatus(caughtPokemon.pokemon.pokeApiId, true);
-                });
-            }).catch(error => {
-                console.error('Failed to update Pokemon caught status after fetching caught Pokemon:', error);
+            // Emit event to update Pokemon caught status
+            eventBus.emit('pokemon:refresh-caught-status', {
+                caughtPokemon: result.pokemon
             });
         } catch (error) {
             set({
@@ -65,19 +70,20 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
         set({ isLoading: true, error: null });
 
         try {
-            const favorites = await pokedexUseCases.getFavorites();
+            const { currentUserId } = get();
+            if (!currentUserId) {
+                throw new Error('User not authenticated');
+            }
+
+            const favorites = await pokedexUseCases.getFavorites(currentUserId);
             set({
                 favorites,
                 isLoading: false
             });
 
-            import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                const pokemonStore = usePokemonStore.getState();
-                favorites.forEach(favoritePokemon => {
-                    pokemonStore.updatePokemonCaughtStatus(favoritePokemon.pokemon.pokeApiId, true);
-                });
-            }).catch(error => {
-                console.error('Failed to update Pokemon caught status after fetching favorites:', error);
+            // Emit event to update Pokemon caught status for favorites
+            eventBus.emit('pokemon:bulk-caught', {
+                pokeApiIds: favorites.map(fav => fav.pokemon.pokeApiId)
             });
         } catch (error) {
             set({
@@ -89,7 +95,12 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
 
     fetchStats: async () => {
         try {
-            const stats = await pokedexUseCases.getStats();
+            const { currentUserId } = get();
+            if (!currentUserId) {
+                throw new Error('User not authenticated');
+            }
+
+            const stats = await pokedexUseCases.getStats(currentUserId);
             set({ stats });
         } catch (error) {
             console.error('Failed to fetch stats:', error);
@@ -100,7 +111,12 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
         set({ isLoading: true, error: null });
 
         try {
-            const caughtPokemon = await pokedexUseCases.catchPokemon(pokemonId, notes);
+            const { currentUserId } = get();
+            if (!currentUserId) {
+                throw new Error('User not authenticated');
+            }
+
+            const caughtPokemon = await pokedexUseCases.catchPokemon(currentUserId, pokemonId, notes);
 
             if (caughtPokemon) {
                 const { caughtPokemon: currentCaught } = get();
@@ -109,10 +125,9 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
                     isLoading: false
                 });
 
-                import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                    usePokemonStore.getState().updatePokemonCaughtStatus(caughtPokemon.pokemon.pokeApiId, true);
-                }).catch(error => {
-                    console.error('Failed to update Pokemon caught status after catching:', error);
+                // Emit event to update Pokemon caught status
+                eventBus.emit('pokemon:caught', {
+                    pokeApiId: caughtPokemon.pokemon.pokeApiId
                 });
 
                 get().fetchStats();
@@ -134,7 +149,12 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
         set({ isLoading: true, error: null });
 
         try {
-            const caughtPokemon = await pokedexUseCases.catchBulkPokemon(pokemonIds, notes);
+            const { currentUserId } = get();
+            if (!currentUserId) {
+                throw new Error('User not authenticated');
+            }
+
+            const caughtPokemon = await pokedexUseCases.catchBulkPokemon(currentUserId, pokemonIds, notes);
 
             if (caughtPokemon && caughtPokemon.length > 0) {
                 const { caughtPokemon: currentCaught } = get();
@@ -143,13 +163,9 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
                     isLoading: false
                 });
 
-                import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                    const pokemonStore = usePokemonStore.getState();
-                    caughtPokemon.forEach(caught => {
-                        pokemonStore.updatePokemonCaughtStatus(caught.pokemon.pokeApiId, true);
-                    });
-                }).catch(error => {
-                    console.error('Failed to update Pokemon caught status after bulk catching:', error);
+                // Emit event to update Pokemon caught status for bulk caught
+                eventBus.emit('pokemon:bulk-caught', {
+                    pokeApiIds: caughtPokemon.map(caught => caught.pokemon.pokeApiId)
                 });
 
                 get().fetchStats();
@@ -170,7 +186,12 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
         set({ isLoading: true, error: null });
 
         try {
-            const success = await pokedexUseCases.releasePokemon(caughtPokemonId);
+            const { currentUserId } = get();
+            if (!currentUserId) {
+                throw new Error('User not authenticated');
+            }
+
+            const success = await pokedexUseCases.releasePokemon(currentUserId, caughtPokemonId);
 
             if (success) {
                 const { caughtPokemon, favorites } = get();
@@ -183,10 +204,9 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
                 });
 
                 if (releasedPokemon) {
-                    import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                        usePokemonStore.getState().updatePokemonCaughtStatus(releasedPokemon.pokemon.pokeApiId, false);
-                    }).catch(error => {
-                        console.error('Failed to update Pokemon caught status after releasing:', error);
+                    // Emit event to update Pokemon caught status
+                    eventBus.emit('pokemon:released', {
+                        pokeApiId: releasedPokemon.pokemon.pokeApiId
                     });
                 }
 
@@ -210,7 +230,12 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
         set({ isLoading: true, error: null });
 
         try {
-            const successfulIds = await pokedexUseCases.releaseBulkPokemon(caughtPokemonIds);
+            const { currentUserId } = get();
+            if (!currentUserId) {
+                throw new Error('User not authenticated');
+            }
+
+            const successfulIds = await pokedexUseCases.releaseBulkPokemon(currentUserId, caughtPokemonIds);
 
             if (successfulIds.length > 0) {
                 const { caughtPokemon, favorites } = get();
@@ -223,13 +248,9 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
                 });
 
                 if (releasedPokemon.length > 0) {
-                    import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                        const pokemonStore = usePokemonStore.getState();
-                        releasedPokemon.forEach(released => {
-                            pokemonStore.updatePokemonCaughtStatus(released.pokemon.pokeApiId, false);
-                        });
-                    }).catch(error => {
-                        console.error('Failed to update Pokemon caught status after bulk releasing:', error);
+                    // Emit event to update Pokemon caught status for bulk released
+                    eventBus.emit('pokemon:bulk-released', {
+                        pokeApiIds: releasedPokemon.map(released => released.pokemon.pokeApiId)
                     });
                 }
 
@@ -260,7 +281,12 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
         set({ isLoading: true, error: null });
 
         try {
-            const updatedPokemon = await pokedexUseCases.updateCaughtPokemon(caughtPokemonId, updates);
+            const { currentUserId } = get();
+            if (!currentUserId) {
+                throw new Error('User not authenticated');
+            }
+
+            const updatedPokemon = await pokedexUseCases.updateCaughtPokemon(currentUserId, caughtPokemonId, updates);
 
             if (updatedPokemon) {
                 const { caughtPokemon, favorites } = get();
@@ -306,10 +332,14 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
     cleanupDuplicates: async () => {
         try {
             const { indexedDBStorage } = await import('../../../infrastructure/storage/IndexedDBStorage');
-            const { getCurrentUserId } = await import('../../../common/utils/userContext');
 
-            const currentUserId = getCurrentUserId();
-            await indexedDBStorage.cleanupDuplicateCaughtPokemon(currentUserId || undefined);
+            const { currentUserId } = get();
+            if (!currentUserId) {
+                console.warn('No user ID available for cleanup - user not logged in');
+                return;
+            }
+
+            await indexedDBStorage.cleanupDuplicateCaughtPokemon(currentUserId);
 
             const { fetchCaughtPokemon } = get();
             await fetchCaughtPokemon();
@@ -318,8 +348,39 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
             console.error('Failed to cleanup duplicates:', error);
             set({ error: 'Failed to cleanup duplicates' });
         }
+    },
+
+    setUserId: (userId: number | null) => {
+        set({ currentUserId: userId });
+
+        // Automatically fetch caught Pokemon when userId is set
+        if (userId) {
+            get().fetchCaughtPokemon();
+        }
     }
 }));
+
+// Set up event listeners for cross-feature communication
+eventBus.on('auth:login', (data) => {
+    usePokedexStore.getState().setUserId(data.userId);
+});
+
+eventBus.on('auth:logout', async (data) => {
+    usePokedexStore.getState().setUserId(null);
+
+    if (data.isOfflineAccount) {
+        // Clear user data for offline accounts
+        try {
+            if (data.userId) {
+                await pokedexUseCases.clearUserData(data.userId);
+            } else {
+                console.warn('No user ID provided for logout data clearing - skipping');
+            }
+        } catch (error) {
+            console.error('Failed to clear pokedex data on logout:', error);
+        }
+    }
+});
 
 export const useCaughtPokemon = () => {
     const {

@@ -66,7 +66,8 @@ describe('PokemonCard Component', () => {
 
         const image = screen.getByRole('img', { name: /pikachu/i })
         expect(image).toBeInTheDocument()
-        expect(image).toHaveAttribute('src', mockPokemon.spriteUrl)
+        // Component prioritizes officialArtworkUrl over spriteUrl
+        expect(image).toHaveAttribute('src', mockPokemon.officialArtworkUrl)
     })
 
     it('should render fallback image when spriteUrl is not provided', () => {
@@ -76,6 +77,15 @@ describe('PokemonCard Component', () => {
         const image = screen.getByRole('img', { name: /pikachu/i })
         expect(image).toBeInTheDocument()
         expect(image).toHaveAttribute('src', mockPokemon.officialArtworkUrl)
+    })
+
+    it('should render spriteUrl when officialArtworkUrl is not provided', () => {
+        const pokemonWithoutArtwork = { ...mockPokemon, officialArtworkUrl: '' }
+        render(<PokemonCard pokemon={pokemonWithoutArtwork} />)
+
+        const image = screen.getByRole('img', { name: /pikachu/i })
+        expect(image).toBeInTheDocument()
+        expect(image).toHaveAttribute('src', mockPokemon.spriteUrl)
     })
 
     it('should handle Pokemon with multiple types', () => {

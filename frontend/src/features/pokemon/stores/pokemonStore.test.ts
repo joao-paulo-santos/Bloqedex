@@ -21,8 +21,29 @@ vi.mock('../../../infrastructure/storage/IndexedDBStorage', () => ({
     indexedDBStorage: {
         getAllPokemon: vi.fn(),
         bulkStorePokemon: vi.fn(),
+        savePokemon: vi.fn(() => Promise.resolve()),
     }
 }))
+
+// Helper function to create mock Pokemon
+const createMockPokemon = (pokeApiId: number, name: string): Pokemon => ({
+    id: pokeApiId,
+    pokeApiId,
+    name,
+    types: ['normal'],
+    height: 10,
+    weight: 100,
+    hp: 50,
+    attack: 60,
+    defense: 70,
+    specialAttack: 80,
+    specialDefense: 90,
+    speed: 100,
+    spriteUrl: `https://example.com/pokemon/${pokeApiId}.png`,
+    officialArtworkUrl: `https://example.com/artwork/${pokeApiId}.png`,
+    isCaught: false,
+    firstAddedToPokedex: new Date().toISOString()
+})
 
 describe('Pokemon Store', () => {
     beforeEach(() => {
@@ -336,6 +357,146 @@ describe('Pokemon Store', () => {
 
             const updatedStore = usePokemonStore.getState()
             expect(updatedStore.error).toBeNull()
+        })
+    })
+
+    describe('Event Bus Integration', () => {
+        it('should respond to auth:logout event by clearing all caught status', async () => {
+            // Setup: Add some Pokemon with caught status
+            const mockPokemon = createMockPokemon(1, 'Pikachu')
+            mockPokemon.isCaught = true
+
+            const pokemonMap = new Map()
+            pokemonMap.set(1, mockPokemon)
+
+            usePokemonStore.setState({ pokemonMap })
+
+            // Verify Pokemon is caught
+            const store = usePokemonStore.getState()
+            expect(store.pokemonMap.get(1)?.isCaught).toBe(true)
+
+            // Import eventBus to trigger the event
+            const { eventBus } = await import('../../../common/utils/eventBus')
+
+            // Trigger logout event
+            eventBus.emit('auth:logout', { isOfflineAccount: false })
+
+            // Wait for event processing
+            await new Promise(resolve => setTimeout(resolve, 0))
+
+            // Verify Pokemon caught status is cleared
+            const updatedStore = usePokemonStore.getState()
+            expect(updatedStore.pokemonMap.get(1)?.isCaught).toBe(false)
+        })
+
+        it('should respond to pokemon:caught event by updating caught status', async () => {
+            // Setup: Add Pokemon
+            const mockPokemon = createMockPokemon(25, 'Pikachu')
+            mockPokemon.isCaught = false
+
+            const pokemonMap = new Map()
+            pokemonMap.set(25, mockPokemon)
+
+            usePokemonStore.setState({ pokemonMap })
+
+            // Import eventBus to trigger the event
+            const { eventBus } = await import('../../../common/utils/eventBus')
+
+            // Trigger caught event
+            eventBus.emit('pokemon:caught', { pokeApiId: 25 })
+
+            // Wait for event processing
+            await new Promise(resolve => setTimeout(resolve, 0))
+
+            // Verify Pokemon caught status is updated
+            const updatedStore = usePokemonStore.getState()
+            expect(updatedStore.pokemonMap.get(25)?.isCaught).toBe(true)
+        })
+
+        it('should respond to pokemon:released event by updating caught status', async () => {
+            // Setup: Add Pokemon with caught status
+            const mockPokemon = createMockPokemon(25, 'Pikachu')
+            mockPokemon.isCaught = true
+
+            const pokemonMap = new Map()
+            pokemonMap.set(25, mockPokemon)
+
+            usePokemonStore.setState({ pokemonMap })
+
+            // Import eventBus to trigger the event
+            const { eventBus } = await import('../../../common/utils/eventBus')
+
+            // Trigger released event
+            eventBus.emit('pokemon:released', { pokeApiId: 25 })
+
+            // Wait for event processing
+            await new Promise(resolve => setTimeout(resolve, 0))
+
+            // Verify Pokemon caught status is updated
+            const updatedStore = usePokemonStore.getState()
+            expect(updatedStore.pokemonMap.get(25)?.isCaught).toBe(false)
+        })
+
+        it('should respond to pokemon:bulk-caught event by updating multiple caught statuses', async () => {
+            // Setup: Add multiple Pokemon
+            const mockPokemon1 = createMockPokemon(25, 'Pikachu')
+            const mockPokemon2 = createMockPokemon(26, 'Raichu')
+            mockPokemon1.isCaught = false
+            mockPokemon2.isCaught = false
+
+            const pokemonMap = new Map()
+            pokemonMap.set(25, mockPokemon1)
+            pokemonMap.set(26, mockPokemon2)
+
+            usePokemonStore.setState({ pokemonMap })
+
+            // Import eventBus to trigger the event
+            const { eventBus } = await import('../../../common/utils/eventBus')
+
+            // Trigger bulk caught event
+            eventBus.emit('pokemon:bulk-caught', { pokeApiIds: [25, 26] })
+
+            // Wait for event processing
+            await new Promise(resolve => setTimeout(resolve, 0))
+
+            // Verify both Pokemon caught statuses are updated
+            const updatedStore = usePokemonStore.getState()
+            expect(updatedStore.pokemonMap.get(25)?.isCaught).toBe(true)
+            expect(updatedStore.pokemonMap.get(26)?.isCaught).toBe(true)
+        })
+
+        it('should respond to pokemon:refresh-caught-status event by refreshing all caught statuses', async () => {
+            // Setup: Add multiple Pokemon with mixed caught statuses
+            const mockPokemon1 = createMockPokemon(25, 'Pikachu')
+            const mockPokemon2 = createMockPokemon(26, 'Raichu')
+            const mockPokemon3 = createMockPokemon(27, 'Sandshrew')
+            mockPokemon1.isCaught = true
+            mockPokemon2.isCaught = true
+            mockPokemon3.isCaught = false
+
+            const pokemonMap = new Map()
+            pokemonMap.set(25, mockPokemon1)
+            pokemonMap.set(26, mockPokemon2)
+            pokemonMap.set(27, mockPokemon3)
+
+            usePokemonStore.setState({ pokemonMap })
+
+            // Import eventBus to trigger the event
+            const { eventBus } = await import('../../../common/utils/eventBus')
+
+            // Trigger refresh event with only Pokemon 26 as caught
+            eventBus.emit('pokemon:refresh-caught-status', {
+                caughtPokemon: [{ pokemon: { pokeApiId: 26 } }]
+            })
+
+            // Wait for event processing
+            await new Promise(resolve => setTimeout(resolve, 0))
+
+            // Verify caught statuses are refreshed correctly
+            const updatedStore = usePokemonStore.getState()
+            expect(updatedStore.pokemonMap.get(25)?.isCaught).toBe(false) // Should be cleared
+            expect(updatedStore.pokemonMap.get(26)?.isCaught).toBe(true)  // Should remain caught
+            expect(updatedStore.pokemonMap.get(27)?.isCaught).toBe(false) // Should remain not caught
         })
     })
 })

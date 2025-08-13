@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { LocalUserStore, type PendingAccount } from './LocalUserStore';
+import { LocalUserStore } from './LocalUserStore';
 import type { User } from '../../../core/types';
 
 const createMockIndexedDB = () => {
@@ -54,14 +54,6 @@ const createMockUser = (id: number): User => ({
     caughtPokemonCount: 0
 });
 
-const createMockPendingAccount = (id: string): PendingAccount => ({
-    id,
-    username: `pending${id}`,
-    email: `pending${id}@example.com`,
-    createdAt: Date.now(),
-    syncAttempts: 0
-});
-
 describe('LocalUserStore', () => {
     let userStore: LocalUserStore;
     let mocks: ReturnType<typeof createMockIndexedDB>;
@@ -92,7 +84,7 @@ describe('LocalUserStore', () => {
             expect(mocks.mockIndexedDB.open).toHaveBeenCalledWith('BloqedexDB', 4);
         });
 
-        it('should create user and pendingAccounts object stores on upgrade', async () => {
+        it('should create user object store on upgrade', async () => {
             // Create a fresh mock for this test
             const upgradeRequest = {
                 result: mocks.mockDB,
@@ -121,7 +113,6 @@ describe('LocalUserStore', () => {
             await storeInitPromise;
 
             expect(mocks.mockDB.createObjectStore).toHaveBeenCalledWith('users', { keyPath: 'id' });
-            expect(mocks.mockDB.createObjectStore).toHaveBeenCalledWith('pendingAccounts', { keyPath: 'id' });
         });
     });
 
@@ -185,115 +176,6 @@ describe('LocalUserStore', () => {
 
             const result = await getPromise;
             expect(result).toBeNull();
-        });
-    });
-
-    describe('storePendingAccount', () => {
-        it('should store a pending account successfully', async () => {
-            const account = createMockPendingAccount('pending1');
-
-            const addRequest = { onsuccess: vi.fn(), onerror: vi.fn() };
-            mocks.mockStore.add.mockReturnValue(addRequest);
-
-            const storePromise = userStore.storePendingAccount(account);
-
-            // Simulate async success
-            setTimeout(() => addRequest.onsuccess(), 0);
-
-            await expect(storePromise).resolves.not.toThrow();
-            expect(mocks.mockStore.add).toHaveBeenCalledWith(account);
-        });
-
-        it('should handle store errors', async () => {
-            const account = createMockPendingAccount('pending1');
-            const error = new Error('Store failed');
-
-            const addRequest = { onsuccess: vi.fn(), onerror: vi.fn() };
-            mocks.mockStore.add.mockReturnValue(addRequest);
-
-            const storePromise = userStore.storePendingAccount(account);
-
-            // Simulate async error
-            setTimeout(() => addRequest.onerror(error), 0);
-
-            await expect(storePromise).rejects.toThrow('Store failed');
-        });
-    });
-
-    describe('getPendingAccounts', () => {
-        it('should retrieve all pending accounts', async () => {
-            const accounts = [
-                createMockPendingAccount('pending1'),
-                createMockPendingAccount('pending2')
-            ];
-
-            const getAllRequest = { onsuccess: vi.fn(), onerror: vi.fn(), result: accounts };
-            mocks.mockStore.getAll.mockReturnValue(getAllRequest);
-
-            const getPromise = userStore.getPendingAccounts();
-
-            // Simulate async success
-            setTimeout(() => getAllRequest.onsuccess(), 0);
-
-            const result = await getPromise;
-            expect(result).toEqual(accounts);
-            expect(mocks.mockStore.getAll).toHaveBeenCalled();
-        });
-    });
-
-    describe('removePendingAccount', () => {
-        it('should remove a pending account successfully', async () => {
-            const deleteRequest = { onsuccess: vi.fn(), onerror: vi.fn() };
-            mocks.mockStore.delete.mockReturnValue(deleteRequest);
-
-            const removePromise = userStore.removePendingAccount('pending1');
-
-            // Simulate async success
-            setTimeout(() => deleteRequest.onsuccess(), 0);
-
-            await expect(removePromise).resolves.not.toThrow();
-            expect(mocks.mockStore.delete).toHaveBeenCalledWith('pending1');
-        });
-
-        it('should handle remove errors', async () => {
-            const error = new Error('Remove failed');
-            const deleteRequest = { onsuccess: vi.fn(), onerror: vi.fn() };
-            mocks.mockStore.delete.mockReturnValue(deleteRequest);
-
-            const removePromise = userStore.removePendingAccount('pending1');
-
-            // Simulate async error
-            setTimeout(() => deleteRequest.onerror(error), 0);
-
-            await expect(removePromise).rejects.toThrow('Remove failed');
-        });
-    });
-
-    describe('clearPendingAccounts', () => {
-        it('should clear all pending accounts successfully', async () => {
-            const clearRequest = { onsuccess: vi.fn(), onerror: vi.fn() };
-            mocks.mockStore.clear.mockReturnValue(clearRequest);
-
-            const clearPromise = userStore.clearPendingAccounts();
-
-            // Simulate async success
-            setTimeout(() => clearRequest.onsuccess(), 0);
-
-            await expect(clearPromise).resolves.not.toThrow();
-            expect(mocks.mockStore.clear).toHaveBeenCalled();
-        });
-
-        it('should handle clear errors', async () => {
-            const error = new Error('Clear failed');
-            const clearRequest = { onsuccess: vi.fn(), onerror: vi.fn() };
-            mocks.mockStore.clear.mockReturnValue(clearRequest);
-
-            const clearPromise = userStore.clearPendingAccounts();
-
-            // Simulate async error
-            setTimeout(() => clearRequest.onerror(error), 0);
-
-            await expect(clearPromise).rejects.toThrow('Clear failed');
         });
     });
 });

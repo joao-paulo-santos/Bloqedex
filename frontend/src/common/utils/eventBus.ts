@@ -5,11 +5,15 @@
 // 3. Scalable - easy to add new events without touching global state
 // 4. Performance - no unnecessary re-renders from state changes
 
+import type { User } from '../../core/types';
+
 type EventMap = {
     // Auth Events
     'auth:openLogin': void;
     'auth:openRegister': void;
     'auth:closeDialogs': void;
+    'auth:login': { userId: number; user: User };
+    'auth:logout': { isOfflineAccount: boolean; userId?: number };
 
     // Toast Events
     'toast:show': {
@@ -19,8 +23,14 @@ type EventMap = {
     };
     'toast:dismiss': { id: string };
 
+    // Pokemon Events
+    'pokemon:caught': { pokeApiId: number };
+    'pokemon:released': { pokeApiId: number };
+    'pokemon:bulk-caught': { pokeApiIds: number[] };
+    'pokemon:bulk-released': { pokeApiIds: number[] };
+    'pokemon:refresh-caught-status': { caughtPokemon: Array<{ pokemon: { pokeApiId: number } }> };
+
     // Future event examples 
-    // 'pokemon:caught': { pokemonId: number; pokemonName: string };
     // 'notification:show': { message: string; type: 'success' | 'error' | 'info' };
     // 'modal:open': { modalId: string; data?: any };
     // 'search:focus': void;

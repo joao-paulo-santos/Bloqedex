@@ -1,25 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, CaughtPokemon } from '../../../core/types';
-import { authRepository, pokedexRepository } from '../../../infrastructure/repositories';
+import { authRepository } from '../../../infrastructure/repositories';
 import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStorage';
-import { toastEvents } from '../../../common/utils/eventBus';
+import { toastEvents, eventBus } from '../../../common/utils/eventBus';
 import { extractErrorMessage } from '../../../common/utils/networkHelpers';
-
-interface PendingAccount {
-    id: string;
-    username: string;
-    email: string;
-    createdAt: number;
-    syncAttempts: number;
-}
 
 interface AuthState {
     isAuthenticated: boolean;
     user: User | null;
     token: string | null;
     isOfflineAccount: boolean;
-    pendingAccounts: PendingAccount[];
     login: (usernameOrEmail: string, password: string) => Promise<void>;
     register: (username: string, email: string, password: string) => Promise<void>;
     registerOffline: (username: string, email: string) => Promise<void>;
@@ -27,8 +18,6 @@ interface AuthState {
     logout: () => void;
     logoutWithPendingCheck: () => Promise<boolean>; // Returns true if logout should proceed
     loadUser: () => Promise<void>;
-    syncPendingAccounts: () => Promise<number>;
-    getPendingAccountsCount: () => number;
     getPendingActionsCount: () => Promise<number>;
 }
 
@@ -39,7 +28,6 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             token: null,
             isOfflineAccount: false,
-            pendingAccounts: [],
 
             login: async (usernameOrEmail: string, password: string) => {
                 try {
@@ -51,16 +39,10 @@ export const useAuthStore = create<AuthState>()(
                         isOfflineAccount: false,
                     });
 
-                    import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                        usePokemonStore.getState().refreshCaughtStatus();
-                    }).catch(error => {
-                        console.error('Failed to refresh Pokemon caught status after login:', error);
-                    });
-
-                    import('../../pokedex/stores/pokedexStore').then(({ usePokedexStore }) => {
-                        usePokedexStore.getState().fetchCaughtPokemon();
-                    }).catch(error => {
-                        console.error('Failed to fetch caught Pokemon after login:', error);
+                    // Emit login event for other features to handle
+                    eventBus.emit('auth:login', {
+                        userId: response.user.id,
+                        user: response.user
                     });
                 } catch (error) {
                     throw new Error(extractErrorMessage(error));
@@ -77,58 +59,59 @@ export const useAuthStore = create<AuthState>()(
                         token: response.token,
                         isOfflineAccount: false,
                     });
+
+                    // Emit login event for other features to handle
+                    eventBus.emit('auth:login', {
+                        userId: response.user.id,
+                        user: response.user
+                    });
                 } catch (error) {
                     throw new Error(extractErrorMessage(error));
                 }
             },
 
             registerOffline: async (username: string, email: string) => {
-                const pendingAccounts = get().pendingAccounts;
+                const { isOfflineAccount } = get();
 
-                if (pendingAccounts.length > 0) {
-                    throw new Error('You already have an offline account pending sync. Please connect to the internet to sync your account before creating a new one.');
+                if (isOfflineAccount) {
+                    throw new Error('You already have an offline account. Please logout first before creating a new one.');
                 }
 
-                const newAccount: PendingAccount = {
-                    id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    username,
-                    email,
-                    createdAt: Date.now(),
-                    syncAttempts: 0,
-                };
-
-                const updatedPendingAccounts = [...pendingAccounts, newAccount];
-
-                try {
-                    await indexedDBStorage.storePendingAccount(newAccount);
-                } catch (error) {
-                    console.error('Failed to store pending account in IndexedDB:', error);
-                }
-
-                const offlineToken = `offline_${newAccount.id}`;
-                // Generate a negative ID for offline accounts to avoid conflicts with online user IDs
-                const offlineUserId = -Math.abs(Date.now() % 1000000);
+                // Use -1 for offline user ID
+                const offlineUserId = -1;
 
                 set({
-                    pendingAccounts: updatedPendingAccounts,
                     isAuthenticated: true,
                     user: {
                         id: offlineUserId,
-                        username: newAccount.username,
-                        email: newAccount.email,
+                        username: username,
+                        email: email,
                         role: 'User',
-                        createdDate: new Date(newAccount.createdAt).toISOString(),
+                        createdDate: new Date().toISOString(),
                         caughtPokemonCount: 0,
                     },
-                    token: offlineToken,
+                    token: null,
                     isOfflineAccount: true,
+                });
+
+                // Emit login event for other features to handle
+                eventBus.emit('auth:login', {
+                    userId: offlineUserId,
+                    user: {
+                        id: offlineUserId,
+                        username: username,
+                        email: email,
+                        role: 'User',
+                        createdDate: new Date().toISOString(),
+                        caughtPokemonCount: 0,
+                    }
                 });
             },
 
             convertOfflineToOnline: async (username: string, email: string, password: string) => {
-                const { isOfflineAccount, user: currentOfflineUser, token: currentOfflineToken } = get();
+                const { isOfflineAccount, user: currentOfflineUser } = get();
 
-                if (!isOfflineAccount || !currentOfflineUser || !currentOfflineToken) {
+                if (!isOfflineAccount || !currentOfflineUser) {
                     throw new Error('No offline account found to convert');
                 }
 
@@ -138,8 +121,8 @@ export const useAuthStore = create<AuthState>()(
 
                     // Migrate Pokemon data from offline to online account
                     try {
-                        // Get all Pokemon caught by the offline user
-                        const offlinePokemon = await indexedDBStorage.getCaughtPokemon(currentOfflineToken);
+                        // Get all Pokemon caught by the offline user (using -1 as offline user ID)
+                        const offlinePokemon = await indexedDBStorage.getCaughtPokemon(-1);
 
                         // Migrate them to the new online user ID
                         for (const pokemon of offlinePokemon) {
@@ -166,22 +149,18 @@ export const useAuthStore = create<AuthState>()(
                         // Don't fail the entire conversion if sync fails
                     }
 
-                    // Clear pending accounts
-                    await indexedDBStorage.clearPendingAccounts();
-
                     // Update auth state to online account
                     set({
                         isAuthenticated: true,
                         user: response.user,
                         token: response.token,
                         isOfflineAccount: false,
-                        pendingAccounts: [],
                     });
 
-                    import('../../pokedex/stores/pokedexStore').then(({ usePokedexStore }) => {
-                        usePokedexStore.getState().fetchCaughtPokemon();
-                    }).catch(error => {
-                        console.error('Failed to fetch caught Pokemon after conversion:', error);
+                    // Emit login event for other features to handle
+                    eventBus.emit('auth:login', {
+                        userId: response.user.id,
+                        user: response.user
                     });
 
                     toastEvents.showSuccess('Account successfully converted to online! Your progress has been preserved.');
@@ -191,33 +170,20 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: () => {
-                const { isOfflineAccount } = get();
+                const { isOfflineAccount, user } = get();
 
                 authRepository.logout();
 
-                if (isOfflineAccount) {
-                    set({ pendingAccounts: [] });
-                    indexedDBStorage.clearPendingAccounts().catch(error => {
-                        console.error('Failed to clear pending accounts from IndexedDB:', error);
-                    });
-
-                    // Clear caught Pokemon data for offline accounts
-                    pokedexRepository.clearUserData().catch((error: Error) => {
-                        console.error('Failed to clear caught Pokemon data on logout:', error);
-                    });
-                }
+                // Emit logout event for other features to handle
+                eventBus.emit('auth:logout', {
+                    isOfflineAccount: isOfflineAccount,
+                    userId: user?.id
+                });
 
                 // Always clear pending actions on logout regardless of user type
                 // This prevents unrelated actions from being executed when a new user logs in
                 indexedDBStorage.clearPendingActions().catch(error => {
                     console.error('Failed to clear pending actions from IndexedDB:', error);
-                });
-
-                // Clear caught status in Pokemon store (set all Pokemon to not caught)
-                import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                    usePokemonStore.getState().clearAllCaughtStatus();
-                }).catch(error => {
-                    console.error('Failed to clear Pokemon caught status:', error);
                 });
 
                 set({
@@ -226,9 +192,7 @@ export const useAuthStore = create<AuthState>()(
                     token: null,
                     isOfflineAccount: false,
                 });
-            },
-
-            logoutWithPendingCheck: async () => {
+            }, logoutWithPendingCheck: async () => {
                 const { isOfflineAccount } = get();
 
                 if (isOfflineAccount) {
@@ -255,71 +219,22 @@ export const useAuthStore = create<AuthState>()(
 
             loadUser: async () => {
                 const persistedState = JSON.parse(localStorage.getItem('bloqedex-auth-storage') || '{}');
+                console.log(persistedState);
 
                 if (persistedState?.state?.isAuthenticated && persistedState?.state?.user) {
-                    const wasOfflineAccount = persistedState.state.isOfflineAccount;
+                    set({
+                        isAuthenticated: persistedState.state.isAuthenticated,
+                        user: persistedState.state.user,
+                        token: persistedState.state.token,
+                        isOfflineAccount: persistedState.state.isOfflineAccount,
+                    });
 
-                    if (wasOfflineAccount) {
-                        try {
-                            const pendingAccounts = await indexedDBStorage.getPendingAccounts();
-                            const offlineAccount = pendingAccounts.find(acc =>
-                                acc.email === persistedState.state.user.email
-                            );
-
-                            if (offlineAccount) {
-                                set({
-                                    isAuthenticated: true,
-                                    user: persistedState.state.user,
-                                    token: persistedState.state.token,
-                                    isOfflineAccount: true,
-                                    pendingAccounts,
-                                });
-
-                                import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                                    usePokemonStore.getState().refreshCaughtStatus();
-                                }).catch(error => {
-                                    console.error('Failed to refresh Pokemon caught status after loading offline account:', error);
-                                });
-
-                                import('../../pokedex/stores/pokedexStore').then(({ usePokedexStore }) => {
-                                    usePokedexStore.getState().fetchCaughtPokemon();
-                                }).catch(error => {
-                                    console.error('Failed to fetch caught Pokemon after loading offline account:', error);
-                                });
-                                return;
-                            }
-                        } catch (error) {
-                            console.error('Failed to load offline account:', error);
-                        }
-                    } else {
-                        try {
-                            const user = await authRepository.getCurrentUser();
-                            const token = localStorage.getItem('auth_token');
-                            if (user && token) {
-                                set({
-                                    isAuthenticated: true,
-                                    user,
-                                    token,
-                                    isOfflineAccount: false,
-                                });
-
-                                import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                                    usePokemonStore.getState().refreshCaughtStatus();
-                                }).catch(error => {
-                                    console.error('Failed to refresh Pokemon caught status after loading online account:', error);
-                                });
-
-                                import('../../pokedex/stores/pokedexStore').then(({ usePokedexStore }) => {
-                                    usePokedexStore.getState().fetchCaughtPokemon();
-                                }).catch(error => {
-                                    console.error('Failed to fetch caught Pokemon after loading online account:', error);
-                                });
-                                return;
-                            }
-                        } catch (error) {
-                            console.error('Failed to load online user:', error);
-                        }
-                    }
+                    // Emit login event for other features to handle
+                    eventBus.emit('auth:login', {
+                        userId: persistedState.state.user.id,
+                        user: persistedState.state.user
+                    });
+                    return;
                 }
 
                 try {
@@ -333,16 +248,10 @@ export const useAuthStore = create<AuthState>()(
                             isOfflineAccount: false,
                         });
 
-                        import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                            usePokemonStore.getState().refreshCaughtStatus();
-                        }).catch(error => {
-                            console.error('Failed to refresh Pokemon caught status after loading online account (fallback):', error);
-                        });
-
-                        import('../../pokedex/stores/pokedexStore').then(({ usePokedexStore }) => {
-                            usePokedexStore.getState().fetchCaughtPokemon();
-                        }).catch(error => {
-                            console.error('Failed to fetch caught Pokemon after loading online account (fallback):', error);
+                        // Emit login event for other features to handle
+                        eventBus.emit('auth:login', {
+                            userId: user.id,
+                            user: user
                         });
                         return;
                     }
@@ -350,52 +259,7 @@ export const useAuthStore = create<AuthState>()(
                     console.error('Failed to load online user:', error);
                 }
 
-                try {
-                    const pendingAccounts = await indexedDBStorage.getPendingAccounts();
-                    if (pendingAccounts.length > 0) {
-                        const offlineAccount = pendingAccounts[0];
-                        const offlineToken = `offline_${offlineAccount.id}`;
-                        // Generate a negative ID for offline accounts to avoid conflicts with online user IDs
-                        const offlineUserId = -Math.abs(Date.now() % 1000000);
-
-                        set({
-                            isAuthenticated: true,
-                            user: {
-                                id: offlineUserId,
-                                username: offlineAccount.username,
-                                email: offlineAccount.email,
-                                role: 'User',
-                                createdDate: new Date(offlineAccount.createdAt).toISOString(),
-                                caughtPokemonCount: 0,
-                            },
-                            token: offlineToken,
-                            isOfflineAccount: true,
-                            pendingAccounts,
-                        });
-
-                        import('../../pokemon/stores/pokemonStore').then(({ usePokemonStore }) => {
-                            usePokemonStore.getState().refreshCaughtStatus();
-                        }).catch(error => {
-                            console.error('Failed to refresh Pokemon caught status after loading offline account (fallback):', error);
-                        });
-
-                        import('../../pokedex/stores/pokedexStore').then(({ usePokedexStore }) => {
-                            usePokedexStore.getState().fetchCaughtPokemon();
-                        }).catch(error => {
-                            console.error('Failed to fetch caught Pokemon after loading offline account (fallback):', error);
-                        });
-                    }
-                } catch (error) {
-                    console.error('Failed to load offline accounts:', error);
-                }
-            },
-
-            syncPendingAccounts: async () => {
-                return 0;
-            },
-
-            getPendingAccountsCount: () => {
-                return get().pendingAccounts.length;
+                // No valid persisted state, user needs to login again
             },
 
             getPendingActionsCount: async () => {

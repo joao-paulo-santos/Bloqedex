@@ -10,8 +10,7 @@ import {
     LocalPokemonStore,
     LocalCaughtPokemonStore,
     LocalUserStore,
-    LocalOfflineActionStore,
-    type PendingAccount
+    LocalOfflineActionStore
 } from './stores';
 
 /**
@@ -96,27 +95,27 @@ export class IndexedDBStorage implements IOfflineStorage {
         return this.caughtPokemonStore.saveCaughtPokemon(caughtPokemon);
     }
 
-    async getCaughtPokemon(userId?: number | string): Promise<CaughtPokemon[]> {
+    async getCaughtPokemon(userId: number): Promise<CaughtPokemon[]> {
         return this.caughtPokemonStore.getCaughtPokemon(userId);
     }
 
-    async deleteCaughtPokemon(id: number): Promise<void> {
-        return this.caughtPokemonStore.deleteCaughtPokemon(id);
+    async deleteCaughtPokemon(userId: number, pokemonId: number): Promise<void> {
+        return this.caughtPokemonStore.deleteCaughtPokemon(userId, pokemonId);
     }
 
-    async cleanupDuplicateCaughtPokemon(userId?: number | string): Promise<void> {
+    async cleanupDuplicateCaughtPokemon(userId: number): Promise<void> {
         return this.caughtPokemonStore.cleanupDuplicateCaughtPokemon(userId);
     }
 
-    async getFavorites(userId?: number | string): Promise<CaughtPokemon[]> {
+    async getFavorites(userId: number): Promise<CaughtPokemon[]> {
         return this.caughtPokemonStore.getFavorites(userId);
     }
 
-    async getPokedexStats(userId?: number | string): Promise<PokedexStats> {
+    async getPokedexStats(userId: number): Promise<PokedexStats> {
         return this.caughtPokemonStore.getPokedexStats(userId);
     }
 
-    async clearCaughtPokemonForUser(userId?: number | string): Promise<void> {
+    async clearCaughtPokemonForUser(userId: number): Promise<void> {
         return this.caughtPokemonStore.clearCaughtPokemonForUser(userId);
     }
 
@@ -130,22 +129,6 @@ export class IndexedDBStorage implements IOfflineStorage {
 
     async getUser(id: number): Promise<User | null> {
         return this.userStore.getUser(id);
-    }
-
-    async storePendingAccount(account: PendingAccount): Promise<void> {
-        return this.userStore.storePendingAccount(account);
-    }
-
-    async getPendingAccounts(): Promise<PendingAccount[]> {
-        return this.userStore.getPendingAccounts();
-    }
-
-    async removePendingAccount(accountId: string): Promise<void> {
-        return this.userStore.removePendingAccount(accountId);
-    }
-
-    async clearPendingAccounts(): Promise<void> {
-        return this.userStore.clearPendingAccounts();
     }
 
     // ==========================================
@@ -196,4 +179,3 @@ export class IndexedDBStorage implements IOfflineStorage {
 export const indexedDBStorage = new IndexedDBStorage();
 
 // Export types
-export type { PendingAccount };

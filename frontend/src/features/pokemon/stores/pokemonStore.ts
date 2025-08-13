@@ -6,6 +6,7 @@ import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStora
 import { getCurrentUserId } from '../../../common/utils/userContext';
 import { getLastConsecutiveId, getLastConsecutiveIdFromMap } from '../../../common/utils/pokemonHelpers';
 import { apiConfig } from '../../../config/api';
+import { eventBus } from '../../../common/utils/eventBus';
 
 interface PokemonState {
     pokemonMap: Map<number, Pokemon>;
@@ -307,7 +308,11 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
     refreshCaughtStatus: async () => {
         try {
             const currentUserId = getCurrentUserId();
-            const caughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
+            if (!currentUserId) {
+                return;
+            }
+
+            const caughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId);
 
             const caughtPokemonIds = new Set(caughtPokemon.map(cp => cp.pokemon.pokeApiId));
 
@@ -355,3 +360,41 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
         set({ error: null });
     }
 }));
+
+// Listen for auth events
+eventBus.on('auth:logout', () => {
+    usePokemonStore.getState().clearAllCaughtStatus();
+});
+
+// Listen for pokedex events to update caught status
+eventBus.on('pokemon:caught', (data: { pokeApiId: number }) => {
+    usePokemonStore.getState().updatePokemonCaughtStatus(data.pokeApiId, true);
+});
+
+eventBus.on('pokemon:released', (data: { pokeApiId: number }) => {
+    usePokemonStore.getState().updatePokemonCaughtStatus(data.pokeApiId, false);
+});
+
+eventBus.on('pokemon:bulk-caught', (data: { pokeApiIds: number[] }) => {
+    const pokemonStore = usePokemonStore.getState();
+    data.pokeApiIds.forEach(pokeApiId => {
+        pokemonStore.updatePokemonCaughtStatus(pokeApiId, true);
+    });
+});
+
+eventBus.on('pokemon:bulk-released', (data: { pokeApiIds: number[] }) => {
+    const pokemonStore = usePokemonStore.getState();
+    data.pokeApiIds.forEach(pokeApiId => {
+        pokemonStore.updatePokemonCaughtStatus(pokeApiId, false);
+    });
+});
+
+eventBus.on('pokemon:refresh-caught-status', (data: { caughtPokemon: Array<{ pokemon: { pokeApiId: number } }> }) => {
+    const pokemonStore = usePokemonStore.getState();
+    // First clear all caught status
+    pokemonStore.clearAllCaughtStatus();
+    // Then set caught status for all provided pokemon
+    data.caughtPokemon.forEach(caught => {
+        pokemonStore.updatePokemonCaughtStatus(caught.pokemon.pokeApiId, true);
+    });
+});

@@ -1,14 +1,11 @@
 import type { CaughtPokemon, PokedexStats, OfflineAction } from '../../../core/types';
 import { BaseDataSource } from './BaseDataSource';
 import { indexedDBStorage } from '../../storage/IndexedDBStorage';
-import { getCurrentUserId } from '../../../common/utils/userContext';
 import { API_PATHS } from '../../../config/uriPaths';
 
 // Data source for Pokedex operations (caught Pokemon management)
 export class PokedexDataSource extends BaseDataSource {
-    async getCaughtPokemon(pageIndex: number = 0, pageSize: number = 20): Promise<{ caughtPokemon: CaughtPokemon[], totalCount: number, hasNextPage: boolean, hasPreviousPage: boolean }> {
-        const currentUserId = getCurrentUserId();
-
+    async getCaughtPokemon(userId: number, pageIndex: number = 0, pageSize: number = 20): Promise<{ caughtPokemon: CaughtPokemon[], totalCount: number, hasNextPage: boolean, hasPreviousPage: boolean }> {
         if (this.isOnline()) {
             try {
                 const pendingActions = await indexedDBStorage.getPendingActions();
@@ -44,7 +41,11 @@ export class PokedexDataSource extends BaseDataSource {
             }
         }
 
-        const offlineCaughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
+        if (!userId) {
+            return { caughtPokemon: [], totalCount: 0, hasNextPage: false, hasPreviousPage: false };
+        }
+
+        const offlineCaughtPokemon = await indexedDBStorage.getCaughtPokemon(userId);
 
         const startIndex = pageIndex * pageSize;
         const endIndex = startIndex + pageSize;
@@ -58,23 +59,12 @@ export class PokedexDataSource extends BaseDataSource {
         };
     }
 
-    async catchPokemon(pokemonId: number, notes?: string): Promise<CaughtPokemon> {
+    async catchPokemon(userId: number, pokemonId: number, notes?: string): Promise<CaughtPokemon> {
         const payload = { pokemonId, notes };
 
         if (this.isOnline()) {
             try {
                 const response = await this.client.post<CaughtPokemon>(API_PATHS.POKEDEX.CATCH, payload);
-
-                const existingCaught = await indexedDBStorage.getCaughtPokemon(getCurrentUserId() || undefined);
-                const tempEntries = existingCaught.filter(cp =>
-                    cp.pokemon.pokeApiId === response.data.pokemon.pokeApiId &&
-                    cp.id !== response.data.id &&
-                    (cp.id > 1000000000)
-                );
-
-                for (const tempEntry of tempEntries) {
-                    await indexedDBStorage.deleteCaughtPokemon(tempEntry.id);
-                }
 
                 await indexedDBStorage.saveCaughtPokemon(response.data);
 
@@ -101,15 +91,10 @@ export class PokedexDataSource extends BaseDataSource {
 
         const pokemon = await indexedDBStorage.getPokemonByPokeApiId(pokemonId);
         if (pokemon) {
-            const currentUserId = getCurrentUserId();
-            if (!currentUserId) {
-                throw new Error('No authenticated user found');
-            }
-
             const caughtPokemon: CaughtPokemon = {
                 id: Date.now(), // Temporary ID
                 pokemon,
-                userId: typeof currentUserId === 'string' ? parseInt(currentUserId, 10) : currentUserId,
+                userId,
                 caughtDate: new Date().toISOString(),
                 notes,
                 isFavorite: false
@@ -122,7 +107,7 @@ export class PokedexDataSource extends BaseDataSource {
         throw new Error('Pokemon not found');
     }
 
-    async catchBulkPokemon(pokemonIds: number[], notes?: string): Promise<CaughtPokemon[]> {
+    async catchBulkPokemon(userId: number, pokemonIds: number[], notes?: string): Promise<CaughtPokemon[]> {
         const payload = {
             pokemonToCatch: pokemonIds.map(pokeApiId => ({
                 pokemonId: pokeApiId,
@@ -138,22 +123,6 @@ export class PokedexDataSource extends BaseDataSource {
 
                 const caughtPokemonArray = Array.isArray(response.data) ? response.data :
                     Array.isArray(response) ? response : [];
-
-
-                for (const caught of caughtPokemonArray) {
-                    const existingCaught = await indexedDBStorage.getCaughtPokemon(getCurrentUserId() || undefined);
-                    const tempEntries = existingCaught.filter(cp =>
-                        cp.pokemon.pokeApiId === caught.pokemon.pokeApiId &&
-                        cp.id !== caught.id &&
-                        (cp.id > 1000000000)
-                    );
-
-                    for (const tempEntry of tempEntries) {
-                        await indexedDBStorage.deleteCaughtPokemon(tempEntry.id);
-                    }
-
-                    await indexedDBStorage.saveCaughtPokemon(caught);
-                }
 
                 return caughtPokemonArray;
             } catch (error) {
@@ -183,10 +152,6 @@ export class PokedexDataSource extends BaseDataSource {
 
         // Create optimistic caught pokemon entries
         const caughtPokemon: CaughtPokemon[] = [];
-        const currentUserId = getCurrentUserId();
-        if (!currentUserId) {
-            throw new Error('No authenticated user found');
-        }
 
         for (const pokemonId of pokemonIds) {
             const pokemon = await indexedDBStorage.getPokemonByPokeApiId(pokemonId);
@@ -194,7 +159,7 @@ export class PokedexDataSource extends BaseDataSource {
                 const caught: CaughtPokemon = {
                     id: Date.now() + pokemonId, // Temporary ID
                     pokemon,
-                    userId: typeof currentUserId === 'string' ? parseInt(currentUserId, 10) : currentUserId,
+                    userId,
                     caughtDate: new Date().toISOString(),
                     notes,
                     isFavorite: false
@@ -208,7 +173,7 @@ export class PokedexDataSource extends BaseDataSource {
         return caughtPokemon;
     }
 
-    async releasePokemon(pokeApiId: number): Promise<void> {
+    async releasePokemon(userId: number, pokeApiId: number): Promise<void> {
         // If online, make API call
         if (await this.isOnline()) {
             try {
@@ -236,16 +201,15 @@ export class PokedexDataSource extends BaseDataSource {
 
         await indexedDBStorage.savePendingAction(offlineAction);
 
-        const currentUserId = getCurrentUserId();
-        const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
+        const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(userId);
         const caughtPokemon = allCaughtPokemon.filter(cp => cp.pokemon.pokeApiId === pokeApiId);
 
         for (const caught of caughtPokemon) {
-            await indexedDBStorage.deleteCaughtPokemon(caught.id);
+            await indexedDBStorage.deleteCaughtPokemon(userId, caught.pokemon.pokeApiId);
         }
     }
 
-    async releaseBulkPokemon(pokeApiIds: number[]): Promise<void> {
+    async releaseBulkPokemon(userId: number, pokeApiIds: number[]): Promise<void> {
 
         if (!pokeApiIds || pokeApiIds.length === 0) {
             console.warn('releaseBulkPokemon: No Pokemon API IDs provided');
@@ -282,18 +246,18 @@ export class PokedexDataSource extends BaseDataSource {
 
         await indexedDBStorage.savePendingAction(offlineAction);
 
-        const currentUserId = getCurrentUserId();
-        const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
+        const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(userId);
 
         for (const pokeApiId of pokeApiIds) {
             const caughtPokemon = allCaughtPokemon.filter(cp => cp.pokemon.pokeApiId === pokeApiId);
             for (const caught of caughtPokemon) {
-                await indexedDBStorage.deleteCaughtPokemon(caught.id);
+                await indexedDBStorage.deleteCaughtPokemon(userId, caught.pokemon.pokeApiId);
             }
         }
     }
 
     async updateCaughtPokemon(
+        userId: number,
         pokemonApiId: number,
         updates: { notes?: string; isFavorite?: boolean }
     ): Promise<CaughtPokemon | null> {
@@ -302,8 +266,7 @@ export class PokedexDataSource extends BaseDataSource {
             try {
                 const response = await this.client.patch<CaughtPokemon>(API_PATHS.POKEDEX.UPDATE(pokemonApiId), updates);
 
-                const currentUserId = getCurrentUserId();
-                const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
+                const allCaughtPokemon = await indexedDBStorage.getCaughtPokemon(userId);
                 const caughtPokemon = allCaughtPokemon.find(cp => cp.pokemon.pokeApiId === pokemonApiId);
 
                 if (caughtPokemon) {
@@ -325,8 +288,7 @@ export class PokedexDataSource extends BaseDataSource {
 
         // Create offline action (either because we're offline or due to network error)
         // For offline mode, update directly in IndexedDB and create pending action
-        const currentUserId = getCurrentUserId();
-        const allCaught = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
+        const allCaught = await indexedDBStorage.getCaughtPokemon(userId);
         const pokemon = allCaught.find(p => p.pokemon.pokeApiId === pokemonApiId);
 
         if (!pokemon) return null;
@@ -348,7 +310,7 @@ export class PokedexDataSource extends BaseDataSource {
         return updatedPokemon;
     }
 
-    async getPokedexStats(): Promise<PokedexStats> {
+    async getPokedexStats(userId: number): Promise<PokedexStats> {
         if (this.isOnline()) {
             try {
                 const response = await this.client.get<PokedexStats>(API_PATHS.POKEDEX.STATS);
@@ -359,8 +321,7 @@ export class PokedexDataSource extends BaseDataSource {
             }
         }
 
-        const currentUserId = getCurrentUserId();
-        const caughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId || undefined);
+        const caughtPokemon = await indexedDBStorage.getCaughtPokemon(userId);
 
         const TOTAL_POKEMON_COUNT = 1025;
 

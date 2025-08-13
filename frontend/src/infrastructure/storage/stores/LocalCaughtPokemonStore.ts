@@ -21,7 +21,7 @@ export class LocalCaughtPokemonStore extends IndexedDBBase {
         await this.promisifyVoidRequest(store.put(caughtPokemon));
     }
 
-    async getCaughtPokemon(userId?: number | string): Promise<CaughtPokemon[]> {
+    async getCaughtPokemon(userId: number): Promise<CaughtPokemon[]> {
         await this.ensureInitialized();
 
         const transaction = this.createTransaction(['caughtPokemon'], 'readonly');
@@ -29,52 +29,56 @@ export class LocalCaughtPokemonStore extends IndexedDBBase {
 
         let result: CaughtPokemon[];
 
-        if (userId) {
-            try {
-                if (store.indexNames.contains('userId')) {
-                    // Filter by userId using the index
-                    const index = store.index('userId');
-                    result = await this.promisifyRequest(index.getAll(userId));
-                } else {
-                    // Fallback: get all and filter manually
-                    console.warn('userId index not found, filtering manually');
-                    const allItems = await this.promisifyRequest(store.getAll());
-                    result = allItems.filter((item: CaughtPokemon) => item.userId === userId);
-                }
-            } catch (error) {
-                console.error('Error accessing userId index:', error);
+        try {
+            if (store.indexNames.contains('userId')) {
+                // Filter by userId using the index
+                const index = store.index('userId');
+                result = await this.promisifyRequest(index.getAll(userId));
+            } else {
                 // Fallback: get all and filter manually
+                console.warn('userId index not found, filtering manually');
                 const allItems = await this.promisifyRequest(store.getAll());
                 result = allItems.filter((item: CaughtPokemon) => item.userId === userId);
             }
-        } else {
-            // Get all caught Pokemon
-            result = await this.promisifyRequest(store.getAll());
+        } catch (error) {
+            console.error('Error accessing caught Pokemon for user:', userId, error);
+            return [];
         }
 
         return this.removeDuplicatesByPokeApiId(result);
     }
 
-    async deleteCaughtPokemon(id: number): Promise<void> {
+    async deleteCaughtPokemon(userId: number, pokemonId: number): Promise<void> {
         await this.ensureInitialized();
+
+        // Get all caught Pokemon for this user
+        const usersCaughtPokemon = await this.getCaughtPokemon(userId);
+
+        // Find the Pokemon to delete by pokemonId
+        const pokemonToDelete = usersCaughtPokemon.find(cp => cp.pokemon.pokeApiId === pokemonId);
+
+        if (!pokemonToDelete) {
+            console.warn(`Pokemon with pokeApiId ${pokemonId} not found for user ${userId} - skipping deletion`);
+            return;
+        }
 
         const transaction = this.createTransaction(['caughtPokemon'], 'readwrite');
         const store = transaction.objectStore('caughtPokemon');
 
         try {
-            await this.promisifyVoidRequest(store.delete(id));
+            await this.promisifyVoidRequest(store.delete(pokemonToDelete.id));
         } catch (error) {
-            console.error('IndexedDB: Failed to delete Pokemon with ID:', id, 'Error:', error);
+            console.error('IndexedDB: Failed to delete Pokemon with pokeApiId:', pokemonId, 'for user:', userId, 'Error:', error);
             throw error;
         }
     }
 
-    async getFavorites(userId?: number | string): Promise<CaughtPokemon[]> {
+    async getFavorites(userId: number): Promise<CaughtPokemon[]> {
         const allCaught = await this.getCaughtPokemon(userId);
         return allCaught.filter(pokemon => pokemon.isFavorite);
     }
 
-    async getPokedexStats(userId?: number | string): Promise<PokedexStats> {
+    async getPokedexStats(userId: number): Promise<PokedexStats> {
         const allCaught = await this.getCaughtPokemon(userId);
         const totalCaught = allCaught.length;
         const totalFavorites = allCaught.filter(pokemon => pokemon.isFavorite).length;
@@ -94,7 +98,7 @@ export class LocalCaughtPokemonStore extends IndexedDBBase {
         };
     }
 
-    async cleanupDuplicateCaughtPokemon(userId?: number | string): Promise<void> {
+    async cleanupDuplicateCaughtPokemon(userId: number): Promise<void> {
         await this.ensureInitialized();
 
         const transaction = this.createTransaction(['caughtPokemon'], 'readwrite');
@@ -102,12 +106,12 @@ export class LocalCaughtPokemonStore extends IndexedDBBase {
 
         // Get all caught Pokemon for the user
         let allPokemon: CaughtPokemon[];
-        if (userId && store.indexNames.contains('userId')) {
+        if (store.indexNames.contains('userId')) {
             const index = store.index('userId');
             allPokemon = await this.promisifyRequest(index.getAll(userId));
         } else {
             const allItems = await this.promisifyRequest(store.getAll());
-            allPokemon = userId ? allItems.filter(p => p.userId === userId) : allItems;
+            allPokemon = allItems.filter(p => p.userId === userId);
         }
 
         // Group by pokeApiId
@@ -139,12 +143,7 @@ export class LocalCaughtPokemonStore extends IndexedDBBase {
         await Promise.all(deletePromises);
     }
 
-    async clearCaughtPokemonForUser(userId?: number | string): Promise<void> {
-        if (!userId) {
-            console.warn('clearCaughtPokemonForUser called without userId - no action taken for safety');
-            return;
-        }
-
+    async clearCaughtPokemonForUser(userId: number): Promise<void> {
         await this.ensureInitialized();
 
         const transaction = this.createTransaction(['caughtPokemon'], 'readwrite');

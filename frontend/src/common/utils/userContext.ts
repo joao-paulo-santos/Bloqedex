@@ -1,13 +1,8 @@
-export function getCurrentUserId(): number | string | null {
+export function getCurrentUserId(): number | null {
     try {
         const persistedState = JSON.parse(localStorage.getItem('bloqedex-auth-storage') || '{}');
         if (persistedState?.state?.user?.id) {
-            return persistedState.state.user.id;
-        }
-
-        const token = localStorage.getItem('auth_token');
-        if (token && token.startsWith('offline_')) {
-            return token;
+            return Number(persistedState.state.user.id);
         }
 
         return null;
@@ -24,18 +19,5 @@ export function isOfflineAccount(): boolean {
     } catch (error) {
         console.error('Failed to check if offline account:', error);
         return false;
-    }
-}
-
-export function getUserIdFromToken(token: string): number | string | null {
-    if (token.startsWith('offline_')) {
-        return token;
-    }
-
-    try {
-        const persistedState = JSON.parse(localStorage.getItem('bloqedx-auth-storage') || '{}');
-        return persistedState?.state?.user?.id || null;
-    } catch {
-        return null;
     }
 }

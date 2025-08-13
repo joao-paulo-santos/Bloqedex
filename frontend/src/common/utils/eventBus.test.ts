@@ -356,4 +356,175 @@ describe('Real-world Usage Scenarios', () => {
         expect(step2Callback).toHaveBeenCalledOnce();
         expect(step3Callback).toHaveBeenCalledOnce();
     });
+
+    describe('Pokemon Events', () => {
+        it('should emit and handle pokemon:caught event', () => {
+            const mockCallback = vi.fn();
+
+            eventBus.on('pokemon:caught', mockCallback);
+            eventBus.emit('pokemon:caught', { pokeApiId: 25 });
+
+            expect(mockCallback).toHaveBeenCalledOnce();
+            expect(mockCallback).toHaveBeenCalledWith({ pokeApiId: 25 });
+        });
+
+        it('should emit and handle pokemon:released event', () => {
+            const mockCallback = vi.fn();
+
+            eventBus.on('pokemon:released', mockCallback);
+            eventBus.emit('pokemon:released', { pokeApiId: 26 });
+
+            expect(mockCallback).toHaveBeenCalledOnce();
+            expect(mockCallback).toHaveBeenCalledWith({ pokeApiId: 26 });
+        });
+
+        it('should emit and handle pokemon:bulk-caught event', () => {
+            const mockCallback = vi.fn();
+            const pokeApiIds = [1, 4, 7, 150];
+
+            eventBus.on('pokemon:bulk-caught', mockCallback);
+            eventBus.emit('pokemon:bulk-caught', { pokeApiIds });
+
+            expect(mockCallback).toHaveBeenCalledOnce();
+            expect(mockCallback).toHaveBeenCalledWith({ pokeApiIds });
+        });
+
+        it('should emit and handle pokemon:bulk-released event', () => {
+            const mockCallback = vi.fn();
+            const pokeApiIds = [25, 26, 27];
+
+            eventBus.on('pokemon:bulk-released', mockCallback);
+            eventBus.emit('pokemon:bulk-released', { pokeApiIds });
+
+            expect(mockCallback).toHaveBeenCalledOnce();
+            expect(mockCallback).toHaveBeenCalledWith({ pokeApiIds });
+        });
+
+        it('should emit and handle pokemon:refresh-caught-status event', () => {
+            const mockCallback = vi.fn();
+            const caughtPokemon = [
+                { pokemon: { pokeApiId: 1 } },
+                { pokemon: { pokeApiId: 4 } },
+                { pokemon: { pokeApiId: 7 } }
+            ];
+
+            eventBus.on('pokemon:refresh-caught-status', mockCallback);
+            eventBus.emit('pokemon:refresh-caught-status', { caughtPokemon });
+
+            expect(mockCallback).toHaveBeenCalledOnce();
+            expect(mockCallback).toHaveBeenCalledWith({ caughtPokemon });
+        });
+
+        it('should handle multiple pokemon events simultaneously', () => {
+            const caughtCallback = vi.fn();
+            const releasedCallback = vi.fn();
+            const bulkCaughtCallback = vi.fn();
+
+            eventBus.on('pokemon:caught', caughtCallback);
+            eventBus.on('pokemon:released', releasedCallback);
+            eventBus.on('pokemon:bulk-caught', bulkCaughtCallback);
+
+            // Emit multiple pokemon events
+            eventBus.emit('pokemon:caught', { pokeApiId: 25 });
+            eventBus.emit('pokemon:released', { pokeApiId: 26 });
+            eventBus.emit('pokemon:bulk-caught', { pokeApiIds: [1, 2, 3] });
+
+            expect(caughtCallback).toHaveBeenCalledWith({ pokeApiId: 25 });
+            expect(releasedCallback).toHaveBeenCalledWith({ pokeApiId: 26 });
+            expect(bulkCaughtCallback).toHaveBeenCalledWith({ pokeApiIds: [1, 2, 3] });
+        });
+
+        it('should validate pokemon event data types', () => {
+            const caughtCallback = vi.fn();
+            const bulkCallback = vi.fn();
+
+            eventBus.on('pokemon:caught', caughtCallback);
+            eventBus.on('pokemon:bulk-caught', bulkCallback);
+
+            // Test with proper data types
+            eventBus.emit('pokemon:caught', { pokeApiId: 150 });
+            eventBus.emit('pokemon:bulk-caught', { pokeApiIds: [1, 2, 3] });
+
+            expect(caughtCallback).toHaveBeenCalledWith({ pokeApiId: 150 });
+            expect(bulkCallback).toHaveBeenCalledWith({ pokeApiIds: [1, 2, 3] });
+        });
+
+        it('should handle pokemon event cleanup properly', () => {
+            const mockCallback = vi.fn();
+
+            const cleanup = eventBus.on('pokemon:caught', mockCallback);
+
+            // Event should work before cleanup
+            eventBus.emit('pokemon:caught', { pokeApiId: 25 });
+            expect(mockCallback).toHaveBeenCalledTimes(1);
+
+            // Cleanup and verify event no longer triggers
+            cleanup();
+            eventBus.emit('pokemon:caught', { pokeApiId: 26 });
+            expect(mockCallback).toHaveBeenCalledTimes(1); // Should not increase
+        });
+    });
+
+    describe('Cross-Feature Event Integration', () => {
+        it('should handle auth logout triggering pokemon data clearing', () => {
+            const authCallback = vi.fn();
+            const pokemonCallback = vi.fn();
+
+            eventBus.on('auth:logout', authCallback);
+            eventBus.on('pokemon:refresh-caught-status', pokemonCallback);
+
+            // Simulate logout followed by pokemon data refresh
+            eventBus.emit('auth:logout', { isOfflineAccount: false, userId: 1 });
+            eventBus.emit('pokemon:refresh-caught-status', { caughtPokemon: [] });
+
+            expect(authCallback).toHaveBeenCalledWith({ isOfflineAccount: false, userId: 1 });
+            expect(pokemonCallback).toHaveBeenCalledWith({ caughtPokemon: [] });
+        });
+
+        it('should handle pokemon catch triggering pokedex updates', () => {
+            const pokemonCallback = vi.fn();
+            const toastCallback = vi.fn();
+
+            eventBus.on('pokemon:caught', pokemonCallback);
+            eventBus.on('toast:show', toastCallback);
+
+            // Simulate catching pokemon and showing success message
+            eventBus.emit('pokemon:caught', { pokeApiId: 150 });
+            toastEvents.showSuccess('Mewtwo caught!');
+
+            expect(pokemonCallback).toHaveBeenCalledWith({ pokeApiId: 150 });
+            expect(toastCallback).toHaveBeenCalledWith({
+                message: 'Mewtwo caught!',
+                type: 'success'
+            });
+        });
+
+        it('should handle complex event workflows', () => {
+            const authLoginCallback = vi.fn();
+            const pokemonRefreshCallback = vi.fn();
+            const pokemonCaughtCallback = vi.fn();
+            const toastCallback = vi.fn();
+
+            eventBus.on('auth:login', authLoginCallback);
+            eventBus.on('pokemon:refresh-caught-status', pokemonRefreshCallback);
+            eventBus.on('pokemon:caught', pokemonCaughtCallback);
+            eventBus.on('toast:show', toastCallback);
+
+            // Simulate login workflow: login -> refresh data -> catch pokemon -> show success
+            eventBus.emit('auth:login', {
+                userId: 1,
+                user: { id: 1, username: 'trainer', email: 'trainer@test.com', role: 'User', createdDate: '2025-01-01', caughtPokemonCount: 0 }
+            });
+            eventBus.emit('pokemon:refresh-caught-status', {
+                caughtPokemon: [{ pokemon: { pokeApiId: 25 } }]
+            });
+            eventBus.emit('pokemon:caught', { pokeApiId: 150 });
+            toastEvents.showSuccess('Welcome back, trainer!');
+
+            expect(authLoginCallback).toHaveBeenCalledTimes(1);
+            expect(pokemonRefreshCallback).toHaveBeenCalledTimes(1);
+            expect(pokemonCaughtCallback).toHaveBeenCalledTimes(1);
+            expect(toastCallback).toHaveBeenCalledTimes(1);
+        });
+    });
 });
