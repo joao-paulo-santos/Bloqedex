@@ -3,6 +3,7 @@ import { useCaughtPokemon } from '../stores/pokedexStore';
 import { usePokemonStore } from '../../pokemon/stores/pokemonStore';
 import { CaughtPokemonFiltersComponent } from '../components/CaughtPokemonFilters';
 import { PokedexProgress } from '../components/PokedexProgress';
+import { PokedexTable } from '../components/PokedexTable';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { ErrorMessage } from '../../../components/ui/ErrorMessage';
 import { EmptyPokemonState } from '../../pokemon/components/EmptyPokemonState';
@@ -105,14 +106,6 @@ export const PokedexPage: React.FC = () => {
         }
     };
 
-    const handleUpdateNotes = async (caughtPokemonId: number, notes: string) => {
-        try {
-            await updateCaughtPokemon(caughtPokemonId, { notes });
-        } catch (error) {
-            console.error('Failed to update Pokemon notes:', error);
-        }
-    };
-
     const handleUpdatePokemon = async (caughtPokemonId: number, updates: { notes?: string; isFavorite?: boolean }) => {
         try {
             await updateCaughtPokemon(caughtPokemonId, updates);
@@ -127,15 +120,55 @@ export const PokedexPage: React.FC = () => {
             ? filteredPokemon.filter(p => selectedPokemonIds.has(p.id))
             : filteredPokemon;
 
-        const headers = ['ID', 'Pokemon Name', 'Types', 'Caught Date', 'Is Favorite', 'Notes'];
-        const rows = pokemonToExport.map(caughtPokemon => [
-            caughtPokemon.id,
-            caughtPokemon.pokemon.name,
-            caughtPokemon.pokemon.types.join(', '),
-            new Date(caughtPokemon.caughtDate).toLocaleDateString(),
-            caughtPokemon.isFavorite ? 'Yes' : 'No',
-            caughtPokemon.notes || ''
-        ]);
+        const headers = [
+            'Caught Pokemon ID',
+            'Pokemon Name',
+            'PokeAPI ID',
+            'Types',
+            'Height',
+            'Weight',
+            'HP',
+            'Attack',
+            'Defense',
+            'Special Attack',
+            'Special Defense',
+            'Speed',
+            'Total Stats',
+            'Caught Date',
+            'First Added to Pokedex',
+            'Is Favorite',
+            'Notes',
+            'Sprite URL',
+            'Official Artwork URL'
+        ];
+
+        const rows = pokemonToExport.map(caughtPokemon => {
+            const pokemon = caughtPokemon.pokemon;
+            const totalStats = pokemon.hp + pokemon.attack + pokemon.defense +
+                pokemon.specialAttack + pokemon.specialDefense + pokemon.speed;
+
+            return [
+                caughtPokemon.id,
+                pokemon.name,
+                pokemon.pokeApiId,
+                pokemon.types.join(', '),
+                pokemon.height,
+                pokemon.weight,
+                pokemon.hp,
+                pokemon.attack,
+                pokemon.defense,
+                pokemon.specialAttack,
+                pokemon.specialDefense,
+                pokemon.speed,
+                totalStats,
+                new Date(caughtPokemon.caughtDate).toLocaleDateString(),
+                new Date(pokemon.firstAddedToPokedex).toLocaleDateString(),
+                caughtPokemon.isFavorite ? 'Yes' : 'No',
+                caughtPokemon.notes || '',
+                pokemon.spriteUrl,
+                pokemon.officialArtworkUrl
+            ];
+        });
 
         const csvContent = [headers, ...rows]
             .map(row => row.map(field => `"${field}"`).join(','))
@@ -304,110 +337,28 @@ export const PokedexPage: React.FC = () => {
                                     notes={caughtPokemon.notes}
                                     isFavorite={caughtPokemon.isFavorite}
                                     onToggleFavorite={() => toggleFavorite(caughtPokemon.id)}
-                                    onUpdateNotes={(notes) => handleUpdateNotes(caughtPokemon.id, notes)}
                                     onUpdatePokemon={(updates) => handleUpdatePokemon(caughtPokemon.id, updates)}
                                 />
                             ))}
                         </div>
                     ) : (
-                        /* Table view */
-                        <div className="bg-white rounded-lg border overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedPokemonIds.size === filteredPokemon.length && filteredPokemon.length > 0}
-                                                    onChange={() => {
-                                                        if (selectedPokemonIds.size === filteredPokemon.length) {
-                                                            setSelectedPokemonIds(new Set());
-                                                        } else {
-                                                            setSelectedPokemonIds(new Set(filteredPokemon.map(p => p.id)));
-                                                        }
-                                                    }}
-                                                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                />
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Pokémon
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Types
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Caught Date
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Notes
-                                            </th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {filteredPokemon.map((caughtPokemon) => (
-                                            <tr key={caughtPokemon.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedPokemonIds.has(caughtPokemon.id)}
-                                                        onChange={() => handlePokemonSelect(caughtPokemon.id)}
-                                                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                    />
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center">
-                                                        <img
-                                                            src={caughtPokemon.pokemon.spriteUrl}
-                                                            alt={caughtPokemon.pokemon.name}
-                                                            className="w-12 h-12 object-contain mr-4"
-                                                        />
-                                                        <div>
-                                                            <div className="text-sm font-medium text-gray-900 capitalize">
-                                                                {caughtPokemon.pokemon.name}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex gap-1">
-                                                        {caughtPokemon.pokemon.types.map((type) => (
-                                                            <span
-                                                                key={type}
-                                                                className={`px-2 py-1 rounded text-xs font-medium text-white bg-${type}-500`}
-                                                            >
-                                                                {type}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {new Date(caughtPokemon.caughtDate).toLocaleDateString()}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-gray-900">
-                                                    <div className="max-w-xs truncate">
-                                                        {caughtPokemon.notes || '-'}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    <button
-                                                        onClick={() => toggleFavorite(caughtPokemon.id)}
-                                                        className="text-red-600 hover:text-red-900 mr-4"
-                                                    >
-                                                        <span className={caughtPokemon.isFavorite ? 'text-red-500' : 'text-gray-300'}>
-                                                            ♥
-                                                        </span>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <PokedexTable
+                            caughtPokemon={filteredPokemon}
+                            selectedPokemonIds={selectedPokemonIds}
+                            onPokemonSelect={(pokemonId) => {
+                                // Find the caught pokemon with this pokemon ID
+                                const caughtPokemon = filteredPokemon.find(cp => cp.pokemon.pokeApiId === pokemonId);
+                                if (caughtPokemon) {
+                                    handlePokemonSelect(caughtPokemon.id);
+                                }
+                            }}
+                            onToggleFavorite={toggleFavorite}
+                            onRelease={handleSingleRelease}
+                            onUpdatePokemon={updateCaughtPokemon}
+                            sortBy={filters.sortBy}
+                            sortOrder={filters.sortOrder}
+                            onSort={(sortBy, sortOrder) => handleFiltersChange({ sortBy, sortOrder })}
+                        />
                     )}
                 </div>
             )}

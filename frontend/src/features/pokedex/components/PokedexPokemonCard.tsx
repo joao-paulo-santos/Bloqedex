@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Pokemon, PokemonFilters } from '../../../core/types';
-import { useAuthStore } from '../../auth/stores/authStore';
+import { PokedexDetailDialog } from './PokedexDetailDialog';
+import { PokemonEditDialog } from './PokemonEditDialog';
 
 interface PokedexPokemonCardProps {
     pokemon: Pokemon;
@@ -13,7 +14,6 @@ interface PokedexPokemonCardProps {
     notes?: string;
     isFavorite?: boolean;
     onToggleFavorite?: () => void;
-    onUpdateNotes?: (notes: string) => void;
     onUpdatePokemon?: (updates: { notes?: string; isFavorite?: boolean }) => void;
 }
 
@@ -28,19 +28,10 @@ export const PokedexPokemonCard: React.FC<PokedexPokemonCardProps> = ({
     notes,
     isFavorite = false,
     onToggleFavorite,
-    onUpdateNotes,
     onUpdatePokemon,
 }) => {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    const [editedNotes, setEditedNotes] = useState(notes || '');
-    const [editedIsFavorite, setEditedIsFavorite] = useState(isFavorite);
-    const { user } = useAuthStore();
-
-    // Sync the edited states with the props when they change or when dialog opens
-    useEffect(() => {
-        setEditedNotes(notes || '');
-        setEditedIsFavorite(isFavorite);
-    }, [notes, isFavorite, showDetailsDialog]);
+    const [showEditDialog, setShowEditDialog] = useState(false);
 
     const formatName = (name: string): string => {
         return name
@@ -120,51 +111,8 @@ export const PokedexPokemonCard: React.FC<PokedexPokemonCardProps> = ({
     };
 
     const sortValue = getSortValue();
-    const isAuthenticated = !!user;
 
-    const handleSave = async () => {
-        try {
-            // Check what has changed
-            const favoriteChanged = editedIsFavorite !== isFavorite;
-            const notesChanged = editedNotes !== (notes || '');
-
-            // If nothing changed, no need to save
-            if (!favoriteChanged && !notesChanged) {
-                console.log('No changes to save');
-                return;
-            }
-
-            // Prepare updates object
-            const updates: { notes?: string; isFavorite?: boolean } = {};
-
-            if (notesChanged) {
-                updates.notes = editedNotes;
-            }
-
-            if (favoriteChanged) {
-                updates.isFavorite = editedIsFavorite;
-            }
-
-            // Use the new combined update function if available
-            if (onUpdatePokemon) {
-                await onUpdatePokemon(updates);
-            } else {
-                // Fallback to individual functions for backward compatibility
-                if (notesChanged && onUpdateNotes) {
-                    await onUpdateNotes(editedNotes);
-                }
-
-                if (favoriteChanged && onToggleFavorite) {
-                    await onToggleFavorite();
-                }
-            }
-
-            console.log('Pokemon data saved successfully', updates);
-
-        } catch (error) {
-            console.error('Failed to save Pokemon data:', error);
-        }
-    }; return (
+    return (
         <div
             className={`bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-75 overflow-hidden cursor-pointer ${isSelected ? 'ring-4 ring-blue-500 ring-opacity-75' : ''
                 } ${className}`}
@@ -199,7 +147,7 @@ export const PokedexPokemonCard: React.FC<PokedexPokemonCardProps> = ({
                             e.stopPropagation();
                             onToggleFavorite();
                         }}
-                        className="absolute top-2 left-2 p-1 rounded-full hover:bg-white hover:bg-opacity-20 transition-all duration-200"
+                        className="absolute top-2 left-2 p-1 rounded-full hover:bg-white hover:bg-opacity-20 transition-all duration-200 cursor-pointer"
                     >
                         <span className={`text-2xl ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}>
                             ♥
@@ -226,9 +174,9 @@ export const PokedexPokemonCard: React.FC<PokedexPokemonCardProps> = ({
                     </div>
                 )}
 
-                {/* Types and Edit Details */}
+                {/* Types and Action Buttons */}
                 <div className="flex justify-between items-center mb-3">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 flex-1 mr-2">
                         {pokemon.types?.map((type) => {
                             return (
                                 <span
@@ -242,15 +190,52 @@ export const PokedexPokemonCard: React.FC<PokedexPokemonCardProps> = ({
                                 <span className="text-gray-500 text-sm">No type data</span>
                             )}
                     </div>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowDetailsDialog(true);
-                        }}
-                        className="text-sm text-gray-600 hover:text-gray-800 underline transition-colors flex-shrink-0 cursor-pointer"
-                    >
-                        Edit
-                    </button>
+                    <div className="flex items-center space-x-1 flex-shrink-0">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowDetailsDialog(true);
+                            }}
+                            className="p-1.5 rounded-md text-gray-400 hover:bg-gray-50 hover:text-blue-600 transition-colors cursor-pointer"
+                            title="View details"
+                        >
+                            <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                            </svg>
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowEditDialog(true);
+                            }}
+                            className="p-1.5 rounded-md text-gray-400 hover:bg-gray-50 hover:text-blue-600 transition-colors cursor-pointer"
+                            title="Edit details"
+                        >
+                            <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Action Buttons - Empty for consistency with Pokemon card layout */}
@@ -259,227 +244,31 @@ export const PokedexPokemonCard: React.FC<PokedexPokemonCardProps> = ({
                 </div>
             </div>
 
-            {/* Details Dialog with Release Action */}
-            {showDetailsDialog && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="fixed inset-0 backdrop-blur-[2px] bg-black/10 transition-opacity" onClick={() => setShowDetailsDialog(false)}></div>
-                    <div className="flex items-center justify-center min-h-screen p-4">
-                        <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto z-10"
-                            onClick={e => e.stopPropagation()}>
-                            <div className="p-6">
-                                {/* Dialog Header */}
-                                <div className="flex justify-between items-center mb-4">
-                                    <h2 className="text-xl font-bold text-gray-900">
-                                        {formatName(pokemon.name)} #{pokemon.pokeApiId.toString().padStart(3, '0')}
-                                    </h2>
-                                    <button
-                                        onClick={() => setShowDetailsDialog(false)}
-                                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                                    >
-                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
+            {/* Details Dialog */}
+            <PokedexDetailDialog
+                pokemon={pokemon}
+                isOpen={showDetailsDialog}
+                onClose={() => setShowDetailsDialog(false)}
+                caughtDate={caughtDate}
+                notes={notes}
+                isFavorite={isFavorite}
+            />
 
-                                {/* Pokemon Image */}
-                                <div className="flex justify-center mb-4">
-                                    {pokemon.officialArtworkUrl || pokemon.spriteUrl ? (
-                                        <img
-                                            src={pokemon.officialArtworkUrl || pokemon.spriteUrl}
-                                            alt={pokemon.name}
-                                            className="w-32 h-32 object-contain"
-                                        />
-                                    ) : (
-                                        <div className="w-32 h-32 flex items-center justify-center text-gray-400 bg-gray-100 rounded">
-                                            <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Types */}
-                                <div className="mb-4">
-                                    <h3 className="text-sm font-medium text-gray-700 mb-2">Types</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {pokemon.types?.map((type) => (
-                                            <span
-                                                key={type}
-                                                className={`${getTypeColor(type)} text-white text-sm px-3 py-1 rounded-full font-medium`}
-                                            >
-                                                {formatName(type)}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Physical Stats */}
-                                <div className="mb-4">
-                                    <h3 className="text-sm font-medium text-gray-700 mb-2">Physical Stats</h3>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Height:</span>
-                                            <span className="font-medium">{pokemon.height / 10}m</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Weight:</span>
-                                            <span className="font-medium">{pokemon.weight / 10}kg</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Battle Stats */}
-                                {(pokemon.hp || pokemon.attack || pokemon.defense || pokemon.specialAttack || pokemon.specialDefense || pokemon.speed) && (
-                                    <div className="mb-4">
-                                        <h3 className="text-sm font-medium text-gray-700 mb-2">Battle Stats</h3>
-                                        <div className="space-y-2 text-sm">
-                                            {pokemon.hp && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">HP:</span>
-                                                    <span className="font-medium">{pokemon.hp}</span>
-                                                </div>
-                                            )}
-                                            {pokemon.attack && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Attack:</span>
-                                                    <span className="font-medium">{pokemon.attack}</span>
-                                                </div>
-                                            )}
-                                            {pokemon.defense && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Defense:</span>
-                                                    <span className="font-medium">{pokemon.defense}</span>
-                                                </div>
-                                            )}
-                                            {pokemon.specialAttack && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Special Attack:</span>
-                                                    <span className="font-medium">{pokemon.specialAttack}</span>
-                                                </div>
-                                            )}
-                                            {pokemon.specialDefense && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Special Defense:</span>
-                                                    <span className="font-medium">{pokemon.specialDefense}</span>
-                                                </div>
-                                            )}
-                                            {pokemon.speed && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Speed:</span>
-                                                    <span className="font-medium">{pokemon.speed}</span>
-                                                </div>
-                                            )}
-                                            {(pokemon.hp || pokemon.attack || pokemon.defense || pokemon.specialAttack || pokemon.specialDefense || pokemon.speed) && (
-                                                <div className="flex justify-between pt-2 border-t border-gray-200">
-                                                    <span className="text-gray-600 font-medium">Total:</span>
-                                                    <span className="font-bold">
-                                                        {(pokemon.hp || 0) + (pokemon.attack || 0) + (pokemon.defense || 0) +
-                                                            (pokemon.specialAttack || 0) + (pokemon.specialDefense || 0) + (pokemon.speed || 0)}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* User Data */}
-                                {(pokemon.isCaught || pokemon.firstAddedToPokedex) && (
-                                    <div className="mb-4">
-                                        <h3 className="text-sm font-medium text-gray-700 mb-2">Your Data</h3>
-                                        <div className="space-y-2 text-sm">
-                                            {pokemon.isCaught && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Status:</span>
-                                                    <span className="font-medium text-green-600">Caught</span>
-                                                </div>
-                                            )}
-                                            {pokemon.firstAddedToPokedex && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">First Seen:</span>
-                                                    <span className="font-medium">{new Date(pokemon.firstAddedToPokedex).toLocaleDateString()}</span>
-                                                </div>
-                                            )}
-                                            {caughtDate && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-600">Caught:</span>
-                                                    <span className="font-medium">{new Date(caughtDate).toLocaleDateString()}</span>
-                                                </div>
-                                            )}
-
-                                            {/* Favorite Status */}
-                                            {isAuthenticated && (
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-600">Favorite:</span>
-                                                    <label className="flex items-center space-x-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={editedIsFavorite}
-                                                            onChange={(e) => setEditedIsFavorite(e.target.checked)}
-                                                            className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                                                        />
-                                                        <span className="text-sm">Favorite</span>
-                                                    </label>
-                                                </div>
-                                            )}
-
-                                            {/* Notes */}
-                                            {isAuthenticated && (
-                                                <div className="space-y-1">
-                                                    <span className="text-gray-600">Notes:</span>
-                                                    <textarea
-                                                        value={editedNotes}
-                                                        onChange={(e) => setEditedNotes(e.target.value)}
-                                                        placeholder="Add notes about this Pokemon..."
-                                                        className="w-full text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                                        rows={3}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Dialog Action Buttons */}
-                                {isAuthenticated && pokemon.isCaught && (
-                                    <div className="mt-6 pt-4 border-t border-gray-200">
-                                        <div className="flex gap-3">
-                                            {/* Save Button */}
-                                            <button
-                                                onClick={handleSave}
-                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                            >
-                                                Save
-                                            </button>
-
-                                            {/* Release Button */}
-                                            {onRelease && (
-                                                <button
-                                                    onClick={() => {
-                                                        setShowDetailsDialog(false);
-                                                        onRelease();
-                                                    }}
-                                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                                                >
-                                                    Release
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {!isAuthenticated && pokemon.isCaught && (
-                                    <div className="mt-6 pt-4 border-t border-gray-200">
-                                        <p className="text-sm text-gray-500 text-center">
-                                            Sign in to release Pokemon
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Edit Dialog */}
+            <PokemonEditDialog
+                caughtPokemon={showEditDialog ? {
+                    id: 0, // Temporary ID since we don't have the actual caught pokemon ID in this context
+                    userId: 0, // Temporary userId
+                    pokemon: pokemon,
+                    caughtDate: caughtDate || new Date().toISOString(),
+                    notes: notes || '',
+                    isFavorite: isFavorite
+                } : null}
+                isOpen={showEditDialog}
+                onClose={() => setShowEditDialog(false)}
+                onRelease={onRelease}
+                onUpdatePokemon={onUpdatePokemon ? (_caughtPokemonId, updates) => onUpdatePokemon(updates) : undefined}
+            />
         </div>
     );
 };

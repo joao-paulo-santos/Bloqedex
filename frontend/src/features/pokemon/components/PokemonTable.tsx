@@ -7,7 +7,8 @@ interface PokemonTableProps {
     selectedPokemonIds: Set<number>;
     onPokemonSelect: (pokemonId: number) => void;
     sortBy?: PokemonFilters['sortBy'];
-    onSort?: (sortBy: PokemonFilters['sortBy']) => void;
+    sortOrder?: PokemonFilters['sortOrder'];
+    onSort?: (sortBy: PokemonFilters['sortBy'], sortOrder: PokemonFilters['sortOrder']) => void;
 }
 
 export const PokemonTable: React.FC<PokemonTableProps> = ({
@@ -15,6 +16,7 @@ export const PokemonTable: React.FC<PokemonTableProps> = ({
     selectedPokemonIds,
     onPokemonSelect,
     sortBy,
+    sortOrder,
     onSort
 }) => {
     const formatName = (name: string) => {
@@ -49,7 +51,14 @@ export const PokemonTable: React.FC<PokemonTableProps> = ({
 
     const handleSort = (column: PokemonFilters['sortBy']) => {
         if (onSort) {
-            onSort(column);
+            // If clicking the same column, toggle the order
+            if (sortBy === column) {
+                const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+                onSort(column, newOrder);
+            } else {
+                // If clicking a different column, start with ascending
+                onSort(column, 'asc');
+            }
         }
     };
 
@@ -69,7 +78,11 @@ export const PokemonTable: React.FC<PokemonTableProps> = ({
                 <span>{children}</span>
                 {sortBy === column && (
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        {sortOrder === 'asc' ? (
+                            <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                        ) : (
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        )}
                     </svg>
                 )}
             </div>

@@ -289,7 +289,8 @@ export const HomePage: React.FC = () => {
                     selectedPokemonIds={selectedPokemonIds}
                     onPokemonSelect={handlePokemonSelect}
                     sortBy={filters.sortBy}
-                    onSort={(sortBy) => handleFiltersChange({ sortBy })}
+                    sortOrder={filters.sortOrder}
+                    onSort={(sortBy, sortOrder) => handleFiltersChange({ sortBy, sortOrder })}
                 />
             )}
         </>

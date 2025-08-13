@@ -166,7 +166,7 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
 
                 {/* Types and View Details */}
                 <div className="flex justify-between items-center mb-3">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 flex-1 mr-2">
                         {pokemon.types?.map((type) => {
                             return (
                                 <span
@@ -180,15 +180,30 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({
                                 <span className="text-gray-500 text-sm">No type data</span>
                             )}
                     </div>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowDetailsDialog(true);
-                        }}
-                        className="text-sm text-gray-600 hover:text-gray-800 underline transition-colors flex-shrink-0 cursor-pointer"
-                    >
-                        View Details
-                    </button>
+                    <div className="flex-shrink-0">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowDetailsDialog(true);
+                            }}
+                            className="p-2 rounded-md text-gray-400 hover:bg-gray-50 hover:text-blue-600 transition-colors cursor-pointer"
+                            title="View details"
+                        >
+                            <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Action Buttons */}
