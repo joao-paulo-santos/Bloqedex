@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuthStore, useAppStore } from '../../stores';
+import { useAuthStore, useAppStore } from '../../infrastructure/stores';
 import { indexedDBStorage } from '../../infrastructure/storage/IndexedDBStorage';
 import { LoginDialog, RegisterDialog, FloatingAuthButton, SwitchToOnlineButton, OfflineAccountWarning, PendingActionsWarning } from '../../features/auth';
 import { eventBus, authEvents } from '../../common/utils/eventBus';

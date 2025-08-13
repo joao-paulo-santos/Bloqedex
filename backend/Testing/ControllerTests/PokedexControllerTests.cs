@@ -243,39 +243,29 @@ namespace Testing.ControllerTests
         public async Task UpdateCaughtPokemon_ValidOwner_ReturnsUpdatedPokemon()
         {
             var userId = 1;
-            var caughtPokemonId = 1;
+            var pokeApiId = 1;
             var updateDto = new UpdateCaughtPokemonDto
             {
                 Notes = "Updated notes",
                 IsFavorite = true
             };
 
-            var existingCaughtPokemon = new CaughtPokemon
-            {
-                Id = caughtPokemonId,
-                UserId = userId,
-                PokemonId = 1,
-                Pokemon = new Pokemon { Id = 1, PokeApiId = 1, Name = "Bulbasaur" }
-            };
-
             var updatedCaughtPokemon = new CaughtPokemon
             {
-                Id = caughtPokemonId,
+                Id = 1,
                 UserId = userId,
                 PokemonId = 1,
-                Pokemon = new Pokemon { Id = 1, PokeApiId = 1, Name = "Bulbasaur" },
+                Pokemon = new Pokemon { Id = 1, PokeApiId = pokeApiId, Name = "Bulbasaur" },
                 Notes = updateDto.Notes,
                 IsFavorite = updateDto.IsFavorite ?? false
             };
 
             SetupUserContext(userId);
 
-            _mockCaughtPokemonService.Setup(s => s.GetCaughtPokemonByIdAsync(caughtPokemonId))
-                .ReturnsAsync(existingCaughtPokemon);
-            _mockCaughtPokemonService.Setup(s => s.UpdateCaughtPokemonAsync(caughtPokemonId, updateDto.Notes, updateDto.IsFavorite))
+            _mockCaughtPokemonService.Setup(s => s.UpdateCaughtPokemonAsync(userId, pokeApiId, updateDto.Notes, updateDto.IsFavorite))
                 .ReturnsAsync(updatedCaughtPokemon);
 
-            var result = await _controller.UpdateCaughtPokemon(caughtPokemonId, updateDto);
+            var result = await _controller.UpdateCaughtPokemon(pokeApiId, updateDto);
 
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var caughtPokemonDto = Assert.IsType<CaughtPokemonDto>(okResult.Value);
@@ -288,7 +278,7 @@ namespace Testing.ControllerTests
         public async Task UpdateCaughtPokemon_NotFound_ReturnsNotFound()
         {
             var userId = 1;
-            var caughtPokemonId = 999;
+            var pokeApiId = 999;
             var updateDto = new UpdateCaughtPokemonDto
             {
                 Notes = "Updated notes"
@@ -296,42 +286,33 @@ namespace Testing.ControllerTests
 
             SetupUserContext(userId);
 
-            _mockCaughtPokemonService.Setup(s => s.GetCaughtPokemonByIdAsync(caughtPokemonId))
+            _mockCaughtPokemonService.Setup(s => s.UpdateCaughtPokemonAsync(userId, pokeApiId, updateDto.Notes, updateDto.IsFavorite))
                 .ReturnsAsync((CaughtPokemon?)null);
 
-            var result = await _controller.UpdateCaughtPokemon(caughtPokemonId, updateDto);
+            var result = await _controller.UpdateCaughtPokemon(pokeApiId, updateDto);
 
-            Assert.IsType<NotFoundResult>(result.Result);
+            Assert.IsType<BadRequestObjectResult>(result.Result);
         }
 
-        // Tests updating caught Pokemon owned by different user returns forbidden
+        // Tests updating caught Pokemon that doesn't exist for user returns bad request
         [Fact]
-        public async Task UpdateCaughtPokemon_NotOwner_ReturnsForbid()
+        public async Task UpdateCaughtPokemon_NotCaughtByUser_ReturnsBadRequest()
         {
             var userId = 1;
-            var otherUserId = 2;
-            var caughtPokemonId = 1;
+            var pokeApiId = 1;
             var updateDto = new UpdateCaughtPokemonDto
             {
                 Notes = "Updated notes"
             };
 
-            var existingCaughtPokemon = new CaughtPokemon
-            {
-                Id = caughtPokemonId,
-                UserId = otherUserId,
-                PokemonId = 1,
-                Pokemon = new Pokemon { Id = 1, PokeApiId = 1, Name = "Bulbasaur" }
-            };
-
             SetupUserContext(userId);
 
-            _mockCaughtPokemonService.Setup(s => s.GetCaughtPokemonByIdAsync(caughtPokemonId))
-                .ReturnsAsync(existingCaughtPokemon);
+            _mockCaughtPokemonService.Setup(s => s.UpdateCaughtPokemonAsync(userId, pokeApiId, updateDto.Notes, updateDto.IsFavorite))
+                .ReturnsAsync((CaughtPokemon?)null);
 
-            var result = await _controller.UpdateCaughtPokemon(caughtPokemonId, updateDto);
+            var result = await _controller.UpdateCaughtPokemon(pokeApiId, updateDto);
 
-            Assert.IsType<ForbidResult>(result.Result);
+            Assert.IsType<BadRequestObjectResult>(result.Result);
         }
 
         // Tests releasing Pokemon with valid request returns success
@@ -356,17 +337,17 @@ namespace Testing.ControllerTests
         public async Task ReleasePokemon_Failed_ReturnsBadRequest()
         {
             var userId = 1;
-            var caughtPokemonId = 999;
+            var pokeApiId = 999;
 
             SetupUserContext(userId);
 
-            _mockCaughtPokemonService.Setup(s => s.ReleasePokemonAsync(userId, caughtPokemonId))
+            _mockCaughtPokemonService.Setup(s => s.ReleasePokemonAsync(userId, pokeApiId))
                 .ReturnsAsync(false);
 
-            var result = await _controller.ReleasePokemon(caughtPokemonId);
+            var result = await _controller.ReleasePokemon(pokeApiId);
 
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            Assert.Equal("Failed to release Pokemon or Pokemon not found", badRequestResult.Value);
+            Assert.Equal("Failed to release Pokemon - not caught or not found", badRequestResult.Value);
         }
 
         // Tests bulk releasing multiple Pokemon returns operation results
@@ -376,15 +357,15 @@ namespace Testing.ControllerTests
             var userId = 1;
             var bulkReleaseDto = new BulkReleasePokemonDto
             {
-                CaughtPokemonIds = new List<int> { 1, 2, 3 }
+                PokeApiIds = new List<int> { 1, 2, 3 }
             };
 
             var successfulReleases = 2;
-            var errors = new List<string> { "Failed to release Pokemon with ID 3" };
+            var errors = new List<string> { "Failed to release Pokemon with PokeApiId 3" };
 
             SetupUserContext(userId);
 
-            _mockCaughtPokemonService.Setup(s => s.BulkReleasePokemonAsync(userId, bulkReleaseDto.CaughtPokemonIds))
+            _mockCaughtPokemonService.Setup(s => s.BulkReleasePokemonAsync(userId, bulkReleaseDto.PokeApiIds))
                 .ReturnsAsync((successfulReleases, errors));
 
             var result = await _controller.BulkReleasePokemon(bulkReleaseDto);
@@ -403,7 +384,7 @@ namespace Testing.ControllerTests
             var userId = 1;
             var bulkReleaseDto = new BulkReleasePokemonDto
             {
-                CaughtPokemonIds = new List<int>()
+                PokeApiIds = new List<int>()
             };
 
             SetupUserContext(userId);

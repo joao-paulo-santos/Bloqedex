@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { usePokemonStore } from '../stores/pokemonStore';
-import { useAppStore } from '../../../stores';
+import { useAppStore } from '../../../infrastructure/stores';
 import { PokemonCard } from './PokemonCard';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { EmptyPokemonState } from './EmptyPokemonState';

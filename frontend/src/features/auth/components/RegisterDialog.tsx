@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { useAppStore } from '../../../stores';
+import { useAppStore } from '../../../infrastructure/stores';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { XIcon } from '../../../components/common/Icons';
 

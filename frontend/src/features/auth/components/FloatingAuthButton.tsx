@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAppStore } from '../../../stores';
+import { useAppStore } from '../../../infrastructure/stores';
 import { authEvents } from '../../../common/utils/eventBus';
 
 export const FloatingAuthButton: React.FC = () => {
@@ -44,8 +44,8 @@ export const FloatingAuthButton: React.FC = () => {
                         <button
                             onClick={isOnline ? handleLoginClick : undefined}
                             className={`block w-full px-4 py-3 text-sm transition-colors text-left ${isOnline
-                                    ? 'text-gray-700 hover:bg-gray-50'
-                                    : 'text-gray-400 cursor-not-allowed bg-gray-50'
+                                ? 'text-gray-700 hover:bg-gray-50'
+                                : 'text-gray-400 cursor-not-allowed bg-gray-50'
                                 }`}
                             disabled={!isOnline}
                         >

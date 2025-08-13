@@ -352,4 +352,58 @@ describe('LocalCaughtPokemonStore', () => {
             expect(mocks.mockStore.delete).toHaveBeenCalledTimes(1);
         });
     });
+
+    describe('clearCaughtPokemonForUser', () => {
+        beforeEach(async () => {
+            const initPromise = caughtPokemonStore.init();
+            mocks.mockOpenRequest.onsuccess();
+            await initPromise;
+        });
+
+        it('should clear all caught pokemon for a specific user', async () => {
+            const user1Pokemon1 = createMockCaughtPokemon(1, 25, 1);
+            const user1Pokemon2 = createMockCaughtPokemon(2, 26, 1);
+
+            const getAllRequest = { onsuccess: vi.fn(), onerror: vi.fn(), result: [user1Pokemon1, user1Pokemon2] };
+            mocks.mockIndex.getAll.mockReturnValue(getAllRequest);
+
+            const deleteRequest1 = { onsuccess: vi.fn(), onerror: vi.fn() };
+            const deleteRequest2 = { onsuccess: vi.fn(), onerror: vi.fn() };
+            mocks.mockStore.delete.mockReturnValueOnce(deleteRequest1).mockReturnValueOnce(deleteRequest2);
+
+            const clearPromise = caughtPokemonStore.clearCaughtPokemonForUser(1);
+
+            // Trigger the getAll success
+            setTimeout(() => getAllRequest.onsuccess(), 0);
+            // Trigger the delete successes
+            setTimeout(() => {
+                deleteRequest1.onsuccess();
+                deleteRequest2.onsuccess();
+            }, 10);
+
+            await clearPromise;
+
+            // Should delete both pokemon for user 1
+            expect(mocks.mockStore.delete).toHaveBeenCalledWith(1);
+            expect(mocks.mockStore.delete).toHaveBeenCalledWith(2);
+            expect(mocks.mockStore.delete).toHaveBeenCalledTimes(2);
+        });
+
+        it('should not clear anything when no userId provided (safety check)', async () => {
+            // Mock console.warn to verify the warning is logged
+            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+
+            await caughtPokemonStore.clearCaughtPokemonForUser();
+
+            // Should not make any database calls
+            expect(mocks.mockStore.getAll).not.toHaveBeenCalled();
+            expect(mocks.mockIndex.getAll).not.toHaveBeenCalled();
+            expect(mocks.mockStore.delete).not.toHaveBeenCalled();
+
+            // Should log a warning
+            expect(consoleSpy).toHaveBeenCalledWith('clearCaughtPokemonForUser called without userId - no action taken for safety');
+
+            consoleSpy.mockRestore();
+        });
+    });
 });

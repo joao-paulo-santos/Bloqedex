@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from 'axios';
 import { apiConfig } from '../../../config/api';
-import { useAppStore } from '../../../stores';
+import { useAppStore } from '../../stores';
 import { isNetworkError } from '../../../common/utils/networkHelpers';
 import { API_PATHS } from '../../../config/uriPaths';
 

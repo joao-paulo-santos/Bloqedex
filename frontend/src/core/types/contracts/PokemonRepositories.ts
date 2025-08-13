@@ -30,4 +30,5 @@ export interface IPokedexRepository {
         updates: { notes?: string; isFavorite?: boolean }
     ): Promise<CaughtPokemon | null>;
     getStats(): Promise<PokedexStats | null>;
+    clearUserData(userId?: number | string): Promise<boolean>;
 }

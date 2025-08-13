@@ -70,27 +70,7 @@ namespace Application.Services
             return result;
         }
 
-        public async Task<CaughtPokemon?> UpdateCaughtPokemonAsync(int caughtPokemonId, string? notes, bool? isFavorite)
-        {
-            var caughtPokemon = await _unitOfWork.CaughtPokemonRepository.GetCaughtPokemonByIdAsync(caughtPokemonId);
-            if (caughtPokemon == null)
-                return null;
-
-            if (notes != null)
-                caughtPokemon.Notes = notes;
-
-            if (isFavorite.HasValue)
-                caughtPokemon.IsFavorite = isFavorite.Value;
-
-            var result = await _unitOfWork.CaughtPokemonRepository.UpdateCaughtPokemonAsync(caughtPokemon);
-            if (result != null)
-            {
-                await _unitOfWork.SaveChangesAsync();
-            }
-            return result;
-        }
-
-        public async Task<CaughtPokemon?> UpdateCaughtPokemonByPokeApiIdAsync(int userId, int pokeApiId, string? notes, bool? isFavorite)
+        public async Task<CaughtPokemon?> UpdateCaughtPokemonAsync(int userId, int pokeApiId, string? notes, bool? isFavorite)
         {
             var pokemon = await _unitOfWork.PokemonRepository.GetPokemonByPokeApiIdAsync(pokeApiId);
             if (pokemon == null)
@@ -114,28 +94,7 @@ namespace Application.Services
             return result;
         }
 
-        public async Task<bool> ReleasePokemonAsync(int userId, int caughtPokemonId)
-        {
-            var caughtPokemon = await _unitOfWork.CaughtPokemonRepository.GetCaughtPokemonByIdAsync(caughtPokemonId);
-            if (caughtPokemon == null || caughtPokemon.UserId != userId)
-                return false;
-
-            var result = await _unitOfWork.CaughtPokemonRepository.DeleteCaughtPokemonAsync(caughtPokemon);
-            if (result)
-            {
-                var user = await _unitOfWork.UserRepository.GetUserByIdAsync(userId);
-                if (user != null)
-                {
-                    user.CaughtCount = await _unitOfWork.CaughtPokemonRepository.GetUserCaughtPokemonCountAsync(userId);
-                    await _unitOfWork.UserRepository.UpdateUserAsync(user);
-                }
-
-                await _unitOfWork.SaveChangesAsync();
-            }
-            return result;
-        }
-
-        public async Task<bool> ReleasePokemonByPokeApiIdAsync(int userId, int pokeApiId)
+        public async Task<bool> ReleasePokemonAsync(int userId, int pokeApiId)
         {
             var pokemon = await _unitOfWork.PokemonRepository.GetPokemonByPokeApiIdAsync(pokeApiId);
             if (pokemon == null)
@@ -225,35 +184,7 @@ namespace Application.Services
             return (successfulCatches, errors);
         }
 
-        public async Task<(int SuccessfulReleases, List<string> Errors)> BulkReleasePokemonAsync(int userId, List<int> caughtPokemonIds)
-        {
-            var successfulReleases = 0;
-            var errors = new List<string>();
-
-            foreach (var caughtPokemonId in caughtPokemonIds)
-            {
-                try
-                {
-                    var result = await ReleasePokemonAsync(userId, caughtPokemonId);
-                    if (result)
-                    {
-                        successfulReleases++;
-                    }
-                    else
-                    {
-                        errors.Add($"Failed to release Pokemon with caught ID {caughtPokemonId} - not found or access denied");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    errors.Add($"Error releasing Pokemon with caught ID {caughtPokemonId}: {ex.Message}");
-                }
-            }
-
-            return (successfulReleases, errors);
-        }
-
-        public async Task<(int SuccessfulReleases, List<string> Errors)> BulkReleasePokemonByPokeApiIdAsync(int userId, List<int> pokeApiIds)
+        public async Task<(int SuccessfulReleases, List<string> Errors)> BulkReleasePokemonAsync(int userId, List<int> pokeApiIds)
         {
             var successfulReleases = 0;
             var errors = new List<string>();
@@ -262,7 +193,7 @@ namespace Application.Services
             {
                 try
                 {
-                    var result = await ReleasePokemonByPokeApiIdAsync(userId, pokeApiId);
+                    var result = await ReleasePokemonAsync(userId, pokeApiId);
                     if (result)
                     {
                         successfulReleases++;

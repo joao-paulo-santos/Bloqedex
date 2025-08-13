@@ -139,6 +139,35 @@ export class LocalCaughtPokemonStore extends IndexedDBBase {
         await Promise.all(deletePromises);
     }
 
+    async clearCaughtPokemonForUser(userId?: number | string): Promise<void> {
+        if (!userId) {
+            console.warn('clearCaughtPokemonForUser called without userId - no action taken for safety');
+            return;
+        }
+
+        await this.ensureInitialized();
+
+        const transaction = this.createTransaction(['caughtPokemon'], 'readwrite');
+        const store = transaction.objectStore('caughtPokemon');
+
+        // Get all caught Pokemon for the specified user
+        let pokemonToDelete: CaughtPokemon[];
+        if (store.indexNames.contains('userId')) {
+            const index = store.index('userId');
+            pokemonToDelete = await this.promisifyRequest(index.getAll(userId));
+        } else {
+            const allItems = await this.promisifyRequest(store.getAll());
+            pokemonToDelete = allItems.filter(p => p.userId === userId);
+        }
+
+        // Delete all caught Pokemon for this specific user
+        const deletePromises = pokemonToDelete.map(pokemon =>
+            this.promisifyVoidRequest(store.delete(pokemon.id))
+        );
+
+        await Promise.all(deletePromises);
+    }
+
     private removeDuplicatesByPokeApiId(caughtPokemon: CaughtPokemon[]): CaughtPokemon[] {
         const seen = new Map<number, CaughtPokemon>();
 

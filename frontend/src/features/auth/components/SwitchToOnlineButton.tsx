@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { useAppStore } from '../../../stores';
+import { useAppStore } from '../../../infrastructure/stores';
 import { authEvents } from '../../../common/utils/eventBus';
 import { RefreshIcon } from '../../../components/common/Icons';
 

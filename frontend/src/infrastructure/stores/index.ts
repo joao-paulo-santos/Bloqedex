@@ -1,16 +1,16 @@
 // Re-export feature stores
-export { useAuthStore } from '../features/auth';
-export { usePokemonStore } from '../features/pokemon';
-export { usePokedexStore } from '../features/pokedex';
+export { useAuthStore } from '../../features/auth';
+export { usePokemonStore } from '../../features/pokemon';
+export { usePokedexStore } from '../../features/pokedex';
 
 // App Global State Store
 import { create } from 'zustand';
-import { useAuthStore } from '../features/auth';
-import { usePokemonStore } from '../features/pokemon';
-import { authRepository } from '../infrastructure/repositories';
-import { apiConfig } from '../config/api';
-import { toastEvents } from '../common/utils/eventBus';
-import { syncManager } from '../infrastructure/datasources/DataSourceIndex';
+import { useAuthStore } from '../../features/auth';
+import { usePokemonStore } from '../../features/pokemon';
+import { authRepository } from '../../infrastructure/repositories';
+import { apiConfig } from '../../config/api';
+import { toastEvents } from '../../common/utils/eventBus';
+import { syncManager } from '../../infrastructure/datasources/DataSourceIndex';
 
 interface AppGlobalState {
   isOnline: boolean;
@@ -34,17 +34,13 @@ export const useAppStore = create<AppGlobalState>((set, get) => ({
 
       // Only sync pending actions if user has an online account
       // Offline accounts should only sync when explicitly converting to online
-      import('../features/auth/stores/authStore').then(({ useAuthStore }) => {
-        const authState = useAuthStore.getState();
+      const authState = useAuthStore.getState();
 
-        if (!authState.isOfflineAccount && authState.isAuthenticated) {
-          syncManager.syncPendingActions().catch(error => {
-            console.error('Failed to sync pending actions after reconnection:', error);
-          });
-        }
-      }).catch(error => {
-        console.error('Failed to check auth state for sync:', error);
-      });
+      if (!authState.isOfflineAccount && authState.isAuthenticated) {
+        syncManager.syncPendingActions().catch(error => {
+          console.error('Failed to sync pending actions after reconnection:', error);
+        });
+      }
     }
   },
 

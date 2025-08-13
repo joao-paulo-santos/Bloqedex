@@ -9,16 +9,13 @@ namespace Core.Interfaces
         Task<IReadOnlyList<CaughtPokemon>> GetUserCaughtPokemonPagedAsync(int userId, int pageIndex, int pageSize);
         Task<IReadOnlyList<CaughtPokemon>> GetUserFavoritePokemonAsync(int userId);
         Task<CaughtPokemon?> CatchPokemonAsync(int userId, int pokeApiId, string? notes = null);
-        Task<CaughtPokemon?> UpdateCaughtPokemonAsync(int caughtPokemonId, string? notes, bool? isFavorite);
-        Task<CaughtPokemon?> UpdateCaughtPokemonByPokeApiIdAsync(int userId, int pokeApiId, string? notes, bool? isFavorite);
-        Task<bool> ReleasePokemonAsync(int userId, int caughtPokemonId);
-        Task<bool> ReleasePokemonByPokeApiIdAsync(int userId, int pokeApiId);
+        Task<CaughtPokemon?> UpdateCaughtPokemonAsync(int userId, int pokeApiId, string? notes, bool? isFavorite);
+        Task<bool> ReleasePokemonAsync(int userId, int pokeApiId);
         Task<int> GetUserCaughtPokemonCountAsync(int userId);
         Task<bool> IsPokemonCaughtByUserAsync(int userId, int pokeApiId);
         Task<bool> SyncUserCaughtCountAsync(int userId);
         Task<IReadOnlyList<CaughtPokemon>> GetUserCaughtPokemonByPokemonIdsAsync(int userId, IEnumerable<int> pokemonIds);
         Task<(List<CaughtPokemon> SuccessfulCatches, List<string> Errors)> BulkCatchPokemonAsync(int userId, List<(int PokeApiId, string? Notes)> pokemonToCatch);
-        Task<(int SuccessfulReleases, List<string> Errors)> BulkReleasePokemonAsync(int userId, List<int> caughtPokemonIds);
-        Task<(int SuccessfulReleases, List<string> Errors)> BulkReleasePokemonByPokeApiIdAsync(int userId, List<int> pokeApiIds);
+        Task<(int SuccessfulReleases, List<string> Errors)> BulkReleasePokemonAsync(int userId, List<int> pokeApiIds);
     }
 }

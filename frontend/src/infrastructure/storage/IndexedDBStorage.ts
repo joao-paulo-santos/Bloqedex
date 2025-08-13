@@ -116,6 +116,10 @@ export class IndexedDBStorage implements IOfflineStorage {
         return this.caughtPokemonStore.getPokedexStats(userId);
     }
 
+    async clearCaughtPokemonForUser(userId?: number | string): Promise<void> {
+        return this.caughtPokemonStore.clearCaughtPokemonForUser(userId);
+    }
+
     // ==========================================
     // User Operations (delegate to UserStore)
     // ==========================================

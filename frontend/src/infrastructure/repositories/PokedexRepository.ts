@@ -83,7 +83,7 @@ export class PokedexRepository implements IPokedexRepository {
 
                 // Create a caught Pokemon record with reference to the actual Pokemon
                 const caughtPokemon: CaughtPokemon = {
-                    id: Date.now(), // Use timestamp as ID for offline
+                    id: -(Date.now() + pokemonId),
                     pokemon,
                     caughtDate: new Date().toISOString(),
                     notes: notes || '',
@@ -148,7 +148,7 @@ export class PokedexRepository implements IPokedexRepository {
                     const pokemon = await indexedDBStorage.getPokemonByPokeApiId(pokeApiId);
                     if (pokemon) {
                         const caught: CaughtPokemon = {
-                            id: Date.now() + pokeApiId, // Unique ID for each
+                            id: -(Date.now() + pokeApiId),
                             pokemon,
                             caughtDate: new Date().toISOString(),
                             notes: notes || '',
@@ -377,6 +377,28 @@ export class PokedexRepository implements IPokedexRepository {
         } catch (error) {
             console.error('Failed to get Pokedex stats:', error);
             return null;
+        }
+    }
+
+    async clearUserData(userId?: number | string): Promise<boolean> {
+        try {
+            // Only clear data for offline accounts
+            if (isOfflineAccount()) {
+                const userIdToUse = userId || getCurrentUserId();
+
+                if (!userIdToUse) {
+                    return false;
+                }
+
+                await indexedDBStorage.clearCaughtPokemonForUser(userIdToUse);
+                return true;
+            } else {
+                console.warn('clearUserData called for online account - no action taken');
+                return false;
+            }
+        } catch (error) {
+            console.error('Failed to clear user data:', error);
+            return false;
         }
     }
 }

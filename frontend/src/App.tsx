@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { initializeStores, useAuthStore, useAppStore } from './stores';
+import { initializeStores, useAuthStore, useAppStore } from './infrastructure/stores';
 import { Layout } from './components/layout/Layout';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { ToastContainer } from './components/common/ToastContainer';

@@ -30,9 +30,9 @@ export const POKEDEX_PATHS = {
     LIST: '/pokedex',
     CATCH: '/pokedex/catch',
     CATCH_BULK: '/pokedex/catch/bulk',
-    RELEASE: (pokeApiId: number) => `/pokedex/release/${pokeApiId}`,
-    RELEASE_BULK: '/pokedex/release/bulk/pokeapi',
-    UPDATE: (pokemonApiId: number) => `/pokedex/update/${pokemonApiId}`,
+    RELEASE: (pokeApiId: number) => `/pokedex/${pokeApiId}`,
+    RELEASE_BULK: '/pokedex/release/bulk',
+    UPDATE: (pokeApiId: number) => `/pokedex/${pokeApiId}`,
     STATS: '/pokedex/stats',
 } as const;
 

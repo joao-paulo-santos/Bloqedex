@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, CaughtPokemon } from '../../../core/types';
-import { authRepository } from '../../../infrastructure/repositories';
+import { authRepository, pokedexRepository } from '../../../infrastructure/repositories';
 import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStorage';
 import { toastEvents } from '../../../common/utils/eventBus';
 import { extractErrorMessage } from '../../../common/utils/networkHelpers';
@@ -199,6 +199,11 @@ export const useAuthStore = create<AuthState>()(
                     set({ pendingAccounts: [] });
                     indexedDBStorage.clearPendingAccounts().catch(error => {
                         console.error('Failed to clear pending accounts from IndexedDB:', error);
+                    });
+
+                    // Clear caught Pokemon data for offline accounts
+                    pokedexRepository.clearUserData().catch((error: Error) => {
+                        console.error('Failed to clear caught Pokemon data on logout:', error);
                     });
                 }
 
