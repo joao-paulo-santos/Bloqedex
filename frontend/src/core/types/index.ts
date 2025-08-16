@@ -2,6 +2,7 @@
 export type {
     Pokemon,
     CaughtPokemon,
+    NormalizedCaughtPokemon,
     User,
     SharedPokemon,
     PokedexStats

@@ -2,7 +2,6 @@ import type {
     Pokemon,
     CaughtPokemon,
     User,
-    PokedexStats,
     OfflineAction,
     IOfflineStorage
 } from '../../core/types';
@@ -47,12 +46,8 @@ export class IndexedDBStorage implements IOfflineStorage {
         return this.pokemonStore.savePokemon(pokemon);
     }
 
-    async getPokemon(id: number): Promise<Pokemon | null> {
-        return this.pokemonStore.getPokemon(id);
-    }
-
-    async getPokemonByPokeApiId(pokeApiId: number): Promise<Pokemon | null> {
-        return this.pokemonStore.getPokemonByPokeApiId(pokeApiId);
+    async getPokemon(pokeApiId: number): Promise<Pokemon | null> {
+        return this.pokemonStore.getPokemon(pokeApiId);
     }
 
     async getAllPokemon(): Promise<Pokemon[]> {
@@ -95,24 +90,36 @@ export class IndexedDBStorage implements IOfflineStorage {
         return this.caughtPokemonStore.saveCaughtPokemon(caughtPokemon);
     }
 
+    async saveManyCaughtPokemon(caughtPokemon: CaughtPokemon[]): Promise<void> {
+        return this.caughtPokemonStore.saveManyCaughtPokemon(caughtPokemon);
+    }
+
     async getCaughtPokemon(userId: number): Promise<CaughtPokemon[]> {
         return this.caughtPokemonStore.getCaughtPokemon(userId);
     }
 
-    async deleteCaughtPokemon(userId: number, pokemonId: number): Promise<void> {
-        return this.caughtPokemonStore.deleteCaughtPokemon(userId, pokemonId);
+    async getCaughtPokemonById(userId: number, pokeApiId: number): Promise<CaughtPokemon | null> {
+        return this.caughtPokemonStore.getCaughtPokemonById(userId, pokeApiId);
     }
 
-    async cleanupDuplicateCaughtPokemon(userId: number): Promise<void> {
-        return this.caughtPokemonStore.cleanupDuplicateCaughtPokemon(userId);
+    async getCaughtPokemonPaginated(userId: number, pageIndex: number, pageSize: number): Promise<{ pokemon: CaughtPokemon[], total: number }> {
+        return this.caughtPokemonStore.getCaughtPokemonPaginated(userId, pageIndex, pageSize);
+    }
+
+    async deleteCaughtPokemon(userId: number, pokeApiId: number): Promise<void> {
+        return this.caughtPokemonStore.deleteCaughtPokemon(userId, pokeApiId);
     }
 
     async getFavorites(userId: number): Promise<CaughtPokemon[]> {
         return this.caughtPokemonStore.getFavorites(userId);
     }
 
-    async getPokedexStats(userId: number): Promise<PokedexStats> {
-        return this.caughtPokemonStore.getPokedexStats(userId);
+    async getCaughtPokemonCount(userId: number): Promise<number> {
+        return this.caughtPokemonStore.getCaughtCount(userId);
+    }
+
+    async getFavoriteCount(userId: number): Promise<number> {
+        return this.caughtPokemonStore.getFavoriteCount(userId);
     }
 
     async clearCaughtPokemonForUser(userId: number): Promise<void> {

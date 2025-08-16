@@ -1,5 +1,4 @@
 export interface Pokemon {
-    id: number;
     pokeApiId: number;
     name: string;
     height: number;

@@ -7,6 +7,7 @@ export class LocalOfflineActionStore extends IndexedDBBase {
         if (!db.objectStoreNames.contains('offlineActions')) {
             const actionsStore = db.createObjectStore('offlineActions', { keyPath: 'id' });
             actionsStore.createIndex('timestamp', 'timestamp', { unique: false });
+            actionsStore.createIndex('userId', 'userId', { unique: false });
             actionsStore.createIndex('status', 'status', { unique: false });
         }
     }

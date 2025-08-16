@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Pokemon, PokemonFilters } from '../../../core/types';
-import { PokemonUseCases } from '../../../core/usecases';
+import { PokemonUseCases } from '../../../core/Services';
 import { pokemonRepository } from '../../../infrastructure/repositories';
 import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStorage';
 import { getCurrentUserId } from '../../../common/utils/userContext';

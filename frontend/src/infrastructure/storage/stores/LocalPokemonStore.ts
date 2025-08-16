@@ -3,13 +3,12 @@ import { IndexedDBBase } from '../core/IndexedDBBase';
 import { getLastConsecutiveIdFromIds } from '../../../common/utils/pokemonHelpers';
 
 export class LocalPokemonStore extends IndexedDBBase {
-    private pokemonIdsCache: Set<number> | null = null;
+    private pokeApiIdsCache: Set<number> | null = null;
 
     protected createStores(db: IDBDatabase): void {
         // Pokemon store
         if (!db.objectStoreNames.contains('pokemon')) {
-            const pokemonStore = db.createObjectStore('pokemon', { keyPath: 'id' });
-            pokemonStore.createIndex('pokeApiId', 'pokeApiId', { unique: false });
+            const pokemonStore = db.createObjectStore('pokemon', { keyPath: 'pokeApiId' });
             pokemonStore.createIndex('name', 'name', { unique: false });
         }
     }
@@ -22,29 +21,18 @@ export class LocalPokemonStore extends IndexedDBBase {
 
         await this.promisifyVoidRequest(store.put(pokemon));
 
-        if (this.pokemonIdsCache) {
-            this.pokemonIdsCache.add(pokemon.id);
+        if (this.pokeApiIdsCache) {
+            this.pokeApiIdsCache.add(pokemon.pokeApiId);
         }
     }
 
-    async getPokemon(id: number): Promise<Pokemon | null> {
+    async getPokemon(pokeApiId: number): Promise<Pokemon | null> {
         await this.ensureInitialized();
 
         const transaction = this.createTransaction(['pokemon'], 'readonly');
         const store = transaction.objectStore('pokemon');
 
-        const result = await this.promisifyRequest(store.get(id));
-        return result || null;
-    }
-
-    async getPokemonByPokeApiId(pokeApiId: number): Promise<Pokemon | null> {
-        await this.ensureInitialized();
-
-        const transaction = this.createTransaction(['pokemon'], 'readonly');
-        const store = transaction.objectStore('pokemon');
-        const index = store.index('pokeApiId');
-
-        const result = await this.promisifyRequest(index.get(pokeApiId));
+        const result = await this.promisifyRequest(store.get(pokeApiId));
         return result || null;
     }
 
@@ -136,13 +124,13 @@ export class LocalPokemonStore extends IndexedDBBase {
         const validPokemon = results.filter((p): p is Pokemon => p !== undefined);
 
         // Sort by ID to maintain order
-        return validPokemon.sort((a, b) => a.id - b.id);
+        return validPokemon.sort((a, b) => a.pokeApiId - b.pokeApiId);
     }
 
     async getAllPokemonIds(): Promise<Set<number>> {
         // Return cached IDs if available
-        if (this.pokemonIdsCache) {
-            return this.pokemonIdsCache;
+        if (this.pokeApiIdsCache) {
+            return this.pokeApiIdsCache;
         }
 
         await this.ensureInitialized();
@@ -152,7 +140,7 @@ export class LocalPokemonStore extends IndexedDBBase {
 
         const keys = await this.promisifyRequest(store.getAllKeys());
         const ids = new Set(keys as number[]);
-        this.pokemonIdsCache = ids;
+        this.pokeApiIdsCache = ids;
         return ids;
     }
 
@@ -162,23 +150,16 @@ export class LocalPokemonStore extends IndexedDBBase {
     }
 
     async saveManyPokemon(pokemon: Pokemon[]): Promise<void> {
-        if (pokemon.length === 0) return;
-
-        const existingIds = await this.getAllPokemonIds();
-        const newPokemon = pokemon.filter(p => !existingIds.has(p.id));
-
-        if (newPokemon.length === 0) return;
-
         await this.ensureInitialized();
 
         const transaction = this.createTransaction(['pokemon'], 'readwrite');
         const store = transaction.objectStore('pokemon');
 
-        const requests = newPokemon.map(p => {
+        const requests = pokemon.map(p => {
             const request = store.put(p);
             return this.promisifyVoidRequest(request).then(() => {
-                if (this.pokemonIdsCache) {
-                    this.pokemonIdsCache.add(p.id);
+                if (this.pokeApiIdsCache) {
+                    this.pokeApiIdsCache.add(p.pokeApiId);
                 }
             });
         });
@@ -187,6 +168,6 @@ export class LocalPokemonStore extends IndexedDBBase {
     }
 
     clearCache(): void {
-        this.pokemonIdsCache = null;
+        this.pokeApiIdsCache = null;
     }
 }

@@ -8,6 +8,7 @@ export interface IOfflineStorage {
 
 export interface OfflineAction {
     id: string;
+    userId: number;
     type: 'catch' | 'release' | 'update' | 'bulk_catch' | 'bulk_release';
     payload: Record<string, unknown>;
     timestamp: number;

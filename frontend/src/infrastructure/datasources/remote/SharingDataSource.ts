@@ -1,5 +1,5 @@
 import type { SharedPokemon } from '../../../core/types';
-import { BaseDataSource } from './BaseDataSource';
+import { BaseDataSource } from '../BaseDataSource';
 import { API_PATHS } from '../../../config/uriPaths';
 
 // Data source for sharing operations

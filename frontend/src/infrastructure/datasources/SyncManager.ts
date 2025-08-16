@@ -1,4 +1,4 @@
-import { BaseDataSource } from './remote/BaseDataSource';
+import { BaseDataSource } from './BaseDataSource';
 import { indexedDBStorage } from '../storage/IndexedDBStorage';
 import { getCurrentUserId, isOfflineAccount } from '../../common/utils/userContext';
 import { pokedexDataSource } from './DataSourceIndex';

@@ -1,8 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
-import { apiConfig } from '../../../config/api';
-import { useAppStore } from '../../stores';
-import { isNetworkError } from '../../../common/utils/networkHelpers';
-import { API_PATHS } from '../../../config/uriPaths';
+import { apiConfig } from '../../config/api';
+import { isNetworkError } from '../../common/utils/networkHelpers';
+import { API_PATHS } from '../../config/uriPaths';
 
 export class BaseDataSource {
     protected client: AxiosInstance;
@@ -31,21 +30,13 @@ export class BaseDataSource {
             (response) => response,
             (error) => {
                 if (error.response?.status === 401) {
-                    this.clearAuth();
+                    localStorage.removeItem('auth_token');
                     // Use EventBus instead of window.location for better UX
                     console.warn('Authentication expired - please log in again');
                 }
                 return Promise.reject(error);
             }
         );
-    }
-
-    // Network status check - uses cached status from app store
-    isOnline(): boolean {
-        if (!navigator.onLine) return false;
-
-        const appStore = useAppStore.getState();
-        return appStore.isOnline;
     }
 
     // Network error detection helper
@@ -71,7 +62,4 @@ export class BaseDataSource {
         }
     }
 
-    protected clearAuth(): void {
-        localStorage.removeItem('auth_token');
-    }
 }

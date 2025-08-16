@@ -1,6 +1,6 @@
 import type { User, IAuthRepository, LoginRequest, RegisterRequest } from '../types';
 
-export class AuthUseCases {
+export class AuthService {
     private authRepo: IAuthRepository;
 
     constructor(authRepo: IAuthRepository) {
@@ -25,8 +25,8 @@ export class AuthUseCases {
         return response.user;
     }
 
-    async getCurrentUser(): Promise<User | null> {
-        return this.authRepo.getCurrentUser();
+    async getCurrentUser(isOnline: boolean): Promise<User | null> {
+        return this.authRepo.getCurrentUser(isOnline);
     }
 
     async changePassword(currentPassword: string, newPassword: string): Promise<void> {

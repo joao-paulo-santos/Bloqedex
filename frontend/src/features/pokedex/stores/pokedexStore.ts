@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useState, useCallback, useEffect } from 'react';
 import type { CaughtPokemon, PokedexStats, CaughtPokemonFilters } from '../../../core/types';
-import { PokedexUseCases } from '../../../core/usecases';
+import { PokedexService } from '../../../core/Services';
 import { pokedexRepository } from '../../../infrastructure/repositories';
 import { eventBus } from '../../../common/utils/eventBus';
 
@@ -29,7 +29,7 @@ interface PokedexState {
     setUserId: (userId: number | null) => void;
 }
 
-const pokedexUseCases = new PokedexUseCases(pokedexRepository);
+const pokedexService = new PokedexService(pokedexRepository);
 
 export const usePokedexStore = create<PokedexState>((set, get) => ({
     caughtPokemon: [],
@@ -48,7 +48,7 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
                 throw new Error('User not authenticated');
             }
 
-            const result = await pokedexUseCases.getCaughtPokemon(currentUserId);
+            const result = await pokedexService.getCaughtPokemon(currentUserId);
             set({
                 caughtPokemon: result.pokemon,
                 isLoading: false
@@ -75,7 +75,7 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
                 throw new Error('User not authenticated');
             }
 
-            const favorites = await pokedexUseCases.getFavorites(currentUserId);
+            const favorites = await pokedexService.getFavorites(currentUserId);
             set({
                 favorites,
                 isLoading: false
@@ -99,8 +99,7 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
             if (!currentUserId) {
                 throw new Error('User not authenticated');
             }
-
-            const stats = await pokedexUseCases.getStats(currentUserId);
+            const stats = await pokedexService.getStats(currentUserId);
             set({ stats });
         } catch (error) {
             console.error('Failed to fetch stats:', error);
