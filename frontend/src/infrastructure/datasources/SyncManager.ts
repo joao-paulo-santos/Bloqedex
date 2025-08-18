@@ -1,41 +1,32 @@
 import { BaseDataSource } from './BaseDataSource';
-import { indexedDBStorage } from '../storage/IndexedDBStorage';
-import { getCurrentUserId, isOfflineAccount } from '../../common/utils/userContext';
-import { pokedexDataSource } from './DataSourceIndex';
-import type { CaughtPokemon } from '../../core/types';
+import { remotePokedexDataSource, localOfflineActionsDataSource } from './DataSourceIndex';
+import type { OfflineAction } from '../../core/types';
+import { eventBus } from '../../common/utils';
 
 // Handles offline synchronization operations
 export class SyncManager extends BaseDataSource {
 
-    async syncPendingActions(forceSync = false): Promise<void> {
-        if (!(await this.isOnline())) return;
-
-        if (!forceSync && isOfflineAccount()) {
-            return;
-        }
-
-        const currentUserId = getCurrentUserId();
-        if (!currentUserId) {
-            console.warn('No user ID available for sync');
-            return;
-        }
-
-        const pendingActions = await indexedDBStorage.getPendingActions();
+    async syncPendingActions(userId: number): Promise<void> {
+        const pendingActions = await localOfflineActionsDataSource.getPendingActions(userId);
 
         // Sort pending actions by timestamp to ensure proper chronological order
         const sortedActions = pendingActions.sort((a, b) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            a.timestamp - b.timestamp
         );
 
         for (let i = 0; i < sortedActions.length; i++) {
             const action = sortedActions[i];
 
             try {
+                let success = false;
                 switch (action.type) {
                     case 'catch': {
                         const payload = action.payload as { pokemonId: number; notes?: string };
-                        const catchResponse = await pokedexDataSource.catchPokemon(currentUserId, payload.pokemonId, payload.notes);
-                        await this.cleanupAndSaveCatchResponse(catchResponse, payload.pokemonId);
+                        const result = await remotePokedexDataSource.catchPokemon(payload.pokemonId, payload.notes);
+                        if (result) {
+                            success = true;
+                        }
+                        //TODO: sync localStore based on backend response
                         break;
                     }
                     case 'bulk_catch': {
@@ -43,39 +34,49 @@ export class SyncManager extends BaseDataSource {
                         const pokemonIds = payload.pokemonToCatch.map(p => p.pokemonId);
                         const notes = payload.pokemonToCatch[0]?.notes;
 
-                        const bulkCatchResponse = await pokedexDataSource.catchBulkPokemon(currentUserId, pokemonIds, notes);
-                        for (const caught of bulkCatchResponse) {
-                            await this.cleanupAndSaveCatchResponse(caught, caught.pokemon.pokeApiId);
+                        const response = await remotePokedexDataSource.catchBulkPokemon(pokemonIds, notes);
+                        if (response) {
+                            success = true;
                         }
+                        //TODO: sync localStore based on backend response
                         break;
                     }
                     case 'release': {
                         const payload = action.payload as { pokeApiId: number };
-                        await pokedexDataSource.releasePokemon(currentUserId, payload.pokeApiId);
+                        const response = await remotePokedexDataSource.releasePokemon(payload.pokeApiId);
+                        if (response) {
+                            success = true;
+                        }
+                        //TODO: sync localStore based on backend response
                         break;
                     }
                     case 'bulk_release': {
                         const payload = action.payload as { pokeApiIds: number[] };
-                        // Ensure IDs are numbers
                         const numericIds = payload.pokeApiIds.map(id => Number(id));
-
-                        if (numericIds.length > 0) {
-                            await pokedexDataSource.releaseBulkPokemon(currentUserId, numericIds);
+                        const response = await remotePokedexDataSource.releaseBulkPokemon(numericIds);
+                        if (response) {
+                            success = true;
                         }
+                        //TODO: sync localStore based on backend response
                         break;
                     }
                     case 'update': {
                         const payload = action.payload as { pokemonApiId: number; notes?: string; isFavorite?: boolean };
 
-                        const updateResponse = await pokedexDataSource.updateCaughtPokemon(currentUserId, payload.pokemonApiId, payload);
-                        if (updateResponse) {
-                            await indexedDBStorage.saveCaughtPokemon(updateResponse);
+                        const response = await remotePokedexDataSource.updateCaughtPokemon(payload.pokemonApiId, { notes: payload.notes, isFavorite: payload.isFavorite });
+                        if (response) {
+                            success = true;
                         }
+                        //TODO: sync localStore based on backend response
                         break;
                     }
                 }
 
-                await indexedDBStorage.deletePendingAction(action.id);
+                if (success) {
+                    await localOfflineActionsDataSource.completeOfflineAction(action.id);
+                } else {
+                    await localOfflineActionsDataSource.failOfflineActionAndRetry(action);
+                }
 
                 // Add a small delay between actions to prevent overwhelming the server
                 // Skip delay for the last action
@@ -85,58 +86,33 @@ export class SyncManager extends BaseDataSource {
 
             } catch (error) {
                 console.warn(`Failed to sync action ${action.id}:`, error);
-                action.status = 'failed';
-                await indexedDBStorage.savePendingAction(action);
+                await localOfflineActionsDataSource.failOfflineActionAndRetry(action);
             }
         }
 
-        await indexedDBStorage.cleanupExpiredData();
+        await localOfflineActionsDataSource.cleanupExpiredData();
     }
 
-    private async cleanupAndSaveCatchResponse(caughtPokemon: CaughtPokemon, pokeApiId: number): Promise<void> {
-        const currentUserId = getCurrentUserId();
-        if (!currentUserId) {
-            await indexedDBStorage.saveCaughtPokemon(caughtPokemon);
-            return;
-        }
-
-        const existingCaught = await indexedDBStorage.getCaughtPokemon(currentUserId);
-
-        const tempEntries = existingCaught.filter(cp =>
-            cp.pokemon.pokeApiId === pokeApiId &&
-            cp.id !== caughtPokemon.id
-        );
-
-        for (const tempEntry of tempEntries) {
-            await indexedDBStorage.deleteCaughtPokemon(currentUserId, tempEntry.pokemon.pokeApiId);
-        }
-
-        await indexedDBStorage.saveCaughtPokemon(caughtPokemon);
+    async getUserPendingActions(userId: number): Promise<OfflineAction[]> {
+        return await localOfflineActionsDataSource.getPendingActions(userId);
     }
 
-    async startPeriodicSync(intervalMs: number = 30000): Promise<void> {
+    async migratePendingActions(oldUserId: number, newUserId: number): Promise<void> {
+        await localOfflineActionsDataSource.migratePendingActions(oldUserId, newUserId);
+    }
+
+    async triggerImmediateSync(userId: number): Promise<void> {
         try {
-            await this.syncPendingActions();
-        } catch (error) {
-            console.warn('Initial sync failed:', error);
-        }
-
-        setInterval(async () => {
-            try {
-                await this.syncPendingActions();
-            } catch (error) {
-                console.warn('Periodic sync failed:', error);
-            }
-        }, intervalMs);
-    }
-
-    async triggerImmediateSync(): Promise<void> {
-        try {
-            await this.syncPendingActions();
+            await this.syncPendingActions(userId);
         } catch (error) {
             console.error('Immediate sync failed:', error);
         }
     }
 }
 
+
 export const syncManager = new SyncManager();
+
+eventBus.on('auth:offlineToOnlineConversion', (data) => {
+    syncManager.migratePendingActions(data.oldUser.id, data.newUser.id);
+});

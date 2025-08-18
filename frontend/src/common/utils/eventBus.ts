@@ -13,7 +13,9 @@ type EventMap = {
     'auth:openRegister': void;
     'auth:closeDialogs': void;
     'auth:login': { userId: number; user: User };
+    'auth:offlineToOnlineConversion': { oldUser: User; newUser: User };
     'auth:logout': { isOfflineAccount: boolean; userId?: number };
+    'auth:connectivityChange': { isConnected: boolean };
 
     // Toast Events
     'toast:show': {

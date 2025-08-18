@@ -1,14 +1,13 @@
 import { create } from 'zustand';
 import type { Pokemon, PokemonFilters } from '../../../core/types';
-import { PokemonUseCases } from '../../../core/Services';
+import { PokemonService } from '../../../core/Services';
 import { pokemonRepository } from '../../../infrastructure/repositories';
-import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStorage';
-import { getCurrentUserId } from '../../../common/utils/userContext';
 import { getLastConsecutiveId, getLastConsecutiveIdFromMap } from '../../../common/utils/pokemonHelpers';
 import { apiConfig } from '../../../config/api';
 import { eventBus } from '../../../common/utils/eventBus';
 
 interface PokemonState {
+    isOnline: boolean;
     pokemonMap: Map<number, Pokemon>;
     lastConsecutiveId: number;
     totalPokemons: number | null;
@@ -28,12 +27,11 @@ interface PokemonState {
     searchPokemon: (name: string) => Promise<void>;
     setFilters: (filters: PokemonFilters) => void;
     updatePokemonCaughtStatus: (pokeApiId: number, isCaught: boolean) => void;
-    refreshCaughtStatus: () => Promise<void>;
     clearAllCaughtStatus: () => void;
     clearError: () => void;
 }
 
-const pokemonUseCases = new PokemonUseCases(pokemonRepository);
+const pokemonService = new PokemonService(pokemonRepository);
 
 export const usePokemonStore = create<PokemonState>((set, get) => ({
     pokemonMap: new Map<number, Pokemon>(),
@@ -41,6 +39,7 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
     totalPokemons: null,
     allPokemonFetchedAt: null,
     isLoading: false,
+    isOnline: false,
     error: null,
     filters: {
         sortBy: 'pokeApiId',
@@ -188,7 +187,7 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
 
     hasAllPokemon: () => {
         const state = get();
-        return state.totalPokemons !== null && state.pokemonMap.size >= state.totalPokemons;
+        return state.allPokemonFetchedAt !== null;
     },
 
     isCacheStale: () => {
@@ -204,7 +203,8 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
         set({ isLoading: true, error: null });
 
         try {
-            const cachedPokemon = await indexedDBStorage.getAllPokemon();
+            const cachedPokemon = await pokemonService.getAllLocalPokemons();
+            //await indexedDBStorage.getAllPokemon();
             const lastConsecutiveId = getLastConsecutiveId(cachedPokemon);
 
             const pokemonMap = new Map<number, Pokemon>();
@@ -235,7 +235,7 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
         const pageSize = apiConfig.defaultPageSize;
         const pageToFetch = Math.floor(lastConsecutiveIdStored / pageSize);
 
-        const paginatedResult = await pokemonUseCases.getPaginated(pageToFetch, pageSize);
+        const paginatedResult = await pokemonService.getPaginated(state.isOnline, pageToFetch, pageSize);
 
         const newPokemonMap = new Map(state.pokemonMap);
         paginatedResult.pokemon.forEach((pokemon: Pokemon) => {
@@ -243,9 +243,7 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
         });
 
         const newLastConsecutiveId = getLastConsecutiveIdFromMap(newPokemonMap);
-
-        const hasAllPokemonNow = state.totalPokemons !== null && newPokemonMap.size >= state.totalPokemons;
-
+        const hasAllPokemonNow = newPokemonMap.size >= paginatedResult.totalCount;
         const allPokemonFetchedAt = hasAllPokemonNow
             ? Date.now()
             : state.allPokemonFetchedAt;
@@ -262,9 +260,10 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
 
     searchPokemon: async (name: string) => {
         set({ isLoading: true, error: null });
+        const state = get();
 
         try {
-            const result = await pokemonUseCases.searchPokemon(name);
+            const result = await pokemonService.searchPokemon(name, state.isOnline);
 
             const searchResultMap = new Map<number, Pokemon>();
             result.forEach(pokemon => {
@@ -289,7 +288,7 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
         // or here if needed for more complex filtering
     },
 
-    updatePokemonCaughtStatus: (pokeApiId: number, isCaught: boolean) => {
+    updatePokemonCaughtStatus: async (pokeApiId: number, isCaught: boolean) => {
         const { pokemonMap } = get();
         const pokemon = pokemonMap.get(pokeApiId);
 
@@ -300,61 +299,12 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
 
             set({ pokemonMap: newMap });
 
-            indexedDBStorage.savePokemon(updatedPokemon).catch(error => {
-                console.error('Failed to update Pokemon caught status in IndexedDB:', error);
-            });
+            await pokemonService.savePokemon(updatedPokemon);
         }
     },
 
-    refreshCaughtStatus: async () => {
-        try {
-            const currentUserId = getCurrentUserId();
-            if (!currentUserId) {
-                return;
-            }
-
-            const caughtPokemon = await indexedDBStorage.getCaughtPokemon(currentUserId);
-
-            const caughtPokemonIds = new Set(caughtPokemon.map(cp => cp.pokemon.pokeApiId));
-
-            const { pokemonMap } = get();
-            const updatedMap = new Map(pokemonMap);
-            let hasChanges = false;
-
-            for (const [pokeApiId, pokemon] of pokemonMap) {
-                const shouldBeCaught = caughtPokemonIds.has(pokeApiId);
-                if (pokemon.isCaught !== shouldBeCaught) {
-                    const updatedPokemon = { ...pokemon, isCaught: shouldBeCaught };
-                    updatedMap.set(pokeApiId, updatedPokemon);
-                    hasChanges = true;
-
-                    await indexedDBStorage.savePokemon(updatedPokemon);
-                }
-            }
-
-            if (hasChanges) {
-                set({ pokemonMap: updatedMap });
-            }
-        } catch (error) {
-            console.error('Failed to refresh caught status:', error);
-        }
-    },
-
-    clearAllCaughtStatus: () => {
-        const { pokemonMap } = get();
-        const newMap = new Map<number, Pokemon>();
-
-        pokemonMap.forEach((pokemon, key) => {
-            newMap.set(key, { ...pokemon, isCaught: false });
-        });
-
-        set({ pokemonMap: newMap });
-
-        newMap.forEach(pokemon => {
-            indexedDBStorage.savePokemon(pokemon).catch(error => {
-                console.error('Failed to clear Pokemon caught status in IndexedDB:', error);
-            });
-        });
+    clearAllCaughtStatus: async () => {
+        await pokemonService.clearAllCaughtStatus();
     },
 
     clearError: () => {
@@ -388,6 +338,12 @@ eventBus.on('pokemon:bulk-released', (data: { pokeApiIds: number[] }) => {
     data.pokeApiIds.forEach(pokeApiId => {
         pokemonStore.updatePokemonCaughtStatus(pokeApiId, false);
     });
+});
+
+eventBus.on('auth:connectivityChange', (data: { isConnected: boolean }) => {
+    const pokemonStore = usePokemonStore.getState();
+    pokemonStore.isOnline = data.isConnected;
+    console.log(`Connectivity changed: ${data.isConnected}`);
 });
 
 eventBus.on('pokemon:refresh-caught-status', (data: { caughtPokemon: Array<{ pokemon: { pokeApiId: number } }> }) => {

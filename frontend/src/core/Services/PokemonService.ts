@@ -12,11 +12,19 @@ export class PokemonService {
         pageIndex: number = 0,
         pageSize: number = 50,
     ): Promise<PaginatedResponse<Pokemon>> {
-        return this.pokemonRepo.getPaginated(isOnline, pageIndex, pageSize);
+        return await this.pokemonRepo.getPaginated(isOnline, pageIndex, pageSize);
+    }
+
+    async getAllLocalPokemons(): Promise<Pokemon[]> {
+        return this.pokemonRepo.getAllLocal();
     }
 
     async getPokemonById(id: number, isOnline: boolean): Promise<Pokemon | null> {
         return this.pokemonRepo.getById(id, isOnline);
+    }
+
+    async savePokemon(pokemon: Pokemon): Promise<void> {
+        return this.pokemonRepo.savePokemon(pokemon);
     }
 
     async searchPokemon(name: string, isOnline: boolean): Promise<Pokemon[]> {
@@ -24,5 +32,9 @@ export class PokemonService {
             return [];
         }
         return this.pokemonRepo.search(name.trim(), isOnline);
+    }
+
+    async clearAllCaughtStatus(): Promise<void> {
+        return this.pokemonRepo.clearAllCaughtStatus();
     }
 }

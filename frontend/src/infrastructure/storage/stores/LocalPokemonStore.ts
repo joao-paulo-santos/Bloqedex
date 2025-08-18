@@ -10,6 +10,7 @@ export class LocalPokemonStore extends IndexedDBBase {
         if (!db.objectStoreNames.contains('pokemon')) {
             const pokemonStore = db.createObjectStore('pokemon', { keyPath: 'pokeApiId' });
             pokemonStore.createIndex('name', 'name', { unique: false });
+            pokemonStore.createIndex('isCaught', 'isCaught', { unique: false });
         }
     }
 
@@ -165,6 +166,25 @@ export class LocalPokemonStore extends IndexedDBBase {
         });
 
         await Promise.all(requests);
+    }
+
+    async clearAllCaughtStatus(): Promise<void> {
+        await this.ensureInitialized();
+
+        const transaction = this.createTransaction(['pokemon'], 'readwrite');
+        const store = transaction.objectStore('pokemon');
+
+        const index = store.index('isCaught');
+        const request = index.openCursor();
+
+        request.onsuccess = (event) => {
+            const cursor = (event.target as IDBRequest).result;
+            if (cursor) {
+                const updatedPokemon = { ...cursor.value, isCaught: false };
+                store.put(updatedPokemon);
+                cursor.continue();
+            }
+        };
     }
 
     clearCache(): void {

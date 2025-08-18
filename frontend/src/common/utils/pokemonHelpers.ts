@@ -4,7 +4,7 @@ export function getLastConsecutiveId(pokemon: Pokemon[]): number {
     if (pokemon.length === 0) {
         return 0;
     }
-    const sortedIds = pokemon.map(p => p.id).sort((a, b) => a - b);
+    const sortedIds = pokemon.map(p => p.pokeApiId).sort((a, b) => a - b);
 
     let lastConsecutive = 0;
     for (const id of sortedIds) {

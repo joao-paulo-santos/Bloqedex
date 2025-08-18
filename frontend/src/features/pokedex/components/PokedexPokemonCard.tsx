@@ -257,7 +257,6 @@ export const PokedexPokemonCard: React.FC<PokedexPokemonCardProps> = ({
             {/* Edit Dialog */}
             <PokemonEditDialog
                 caughtPokemon={showEditDialog ? {
-                    id: 0, // Temporary ID since we don't have the actual caught pokemon ID in this context
                     userId: 0, // Temporary userId
                     pokemon: pokemon,
                     caughtDate: caughtDate || new Date().toISOString(),

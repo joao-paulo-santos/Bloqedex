@@ -16,6 +16,8 @@ export interface IPokemonRepository {
     search(name: string, isOnline: boolean): Promise<Pokemon[]>;
     savePokemon(pokemon: Pokemon): Promise<void>;
     saveManyPokemon(pokemon: Pokemon[]): Promise<void>;
+    getAllLocal(): Promise<Pokemon[]>;
+    clearAllCaughtStatus(): Promise<void>;
 }
 
 export interface IPokedexRepository {
@@ -33,4 +35,5 @@ export interface IPokedexRepository {
     ): Promise<CaughtPokemon | null>;
     getStats(userId: number, isOnline: boolean): Promise<PokedexStats | null>;
     clearUserData(userId: number, isOnline: boolean): Promise<boolean>;
+    migrateUserData(oldUserId: number, newUserId: number): Promise<void>;
 }

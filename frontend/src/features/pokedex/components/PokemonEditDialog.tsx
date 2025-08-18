@@ -66,7 +66,7 @@ export const PokemonEditDialog: React.FC<PokemonEditDialogProps> = ({
 
     const handleSave = () => {
         if (editedPokemon && onUpdatePokemon) {
-            onUpdatePokemon(editedPokemon.id, {
+            onUpdatePokemon(editedPokemon.pokemon.pokeApiId, {
                 notes: editedPokemon.notes,
                 isFavorite: editedPokemon.isFavorite
             });

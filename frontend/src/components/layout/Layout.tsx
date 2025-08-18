@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuthStore, useAppStore } from '../../infrastructure/stores';
-import { indexedDBStorage } from '../../infrastructure/storage/IndexedDBStorage';
+import { useAuthStore } from '../../infrastructure/stores';
 import { LoginDialog, RegisterDialog, FloatingAuthButton, SwitchToOnlineButton, OfflineAccountWarning, PendingActionsWarning } from '../../features/auth';
 import { eventBus, authEvents } from '../../common/utils/eventBus';
 import {
@@ -27,8 +26,8 @@ export const Layout = ({ children }: LayoutProps) => {
     const [showPendingActionsWarning, setShowPendingActionsWarning] = useState(false);
     const [pendingActionsCount, setPendingActionsCount] = useState(0);
     const location = useLocation();
-    const { user, logout, isAuthenticated, isOfflineAccount } = useAuthStore();
-    const { isOnline } = useAppStore();
+    const { user, logout, isAuthenticated, isOfflineAccount, getPendingActionsCount } = useAuthStore();
+    const { isOnline } = useAuthStore();
 
     // Listen for auth dialog events
     useEffect(() => {
@@ -86,8 +85,8 @@ export const Layout = ({ children }: LayoutProps) => {
                 setShowOfflineWarning(true);
             } else {
                 try {
-                    const pendingActions = await indexedDBStorage.getPendingActions();
-                    setPendingActionsCount(pendingActions.length);
+                    const pendingActionsCount = await getPendingActionsCount();
+                    setPendingActionsCount(pendingActionsCount);
                     setShowPendingActionsWarning(true);
                 } catch (error) {
                     console.error('Failed to get pending actions for warning:', error);

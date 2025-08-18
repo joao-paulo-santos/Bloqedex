@@ -82,6 +82,10 @@ export class IndexedDBStorage implements IOfflineStorage {
         return this.pokemonStore.saveManyPokemon(pokemon);
     }
 
+    async clearAllCaughtStatus(): Promise<void> {
+        return await this.pokemonStore.clearAllCaughtStatus();
+    }
+
     // ==========================================
     // Caught Pokemon Operations (delegate to CaughtPokemonStore)
     // ==========================================
@@ -142,32 +146,32 @@ export class IndexedDBStorage implements IOfflineStorage {
     // Offline Action Operations (delegate to OfflineActionStore)
     // ==========================================
 
-    async isOnline(): Promise<boolean> {
-        return this.offlineActionStore.isOnline();
-    }
-
     async savePendingAction(action: OfflineAction): Promise<void> {
         return this.offlineActionStore.savePendingAction(action);
     }
 
-    async getPendingActions(): Promise<OfflineAction[]> {
-        return this.offlineActionStore.getPendingActions();
+    async getPendingActions(userId: number): Promise<OfflineAction[]> {
+        return this.offlineActionStore.getPendingActions(userId);
     }
 
-    async clearPendingActions(): Promise<void> {
-        return this.offlineActionStore.clearPendingActions();
+    async clearPendingActions(userId: number): Promise<void> {
+        return this.offlineActionStore.clearPendingActions(userId);
     }
 
     async deletePendingAction(actionId: string): Promise<void> {
         return this.offlineActionStore.deletePendingAction(actionId);
     }
 
-    async syncWhenOnline(): Promise<void> {
-        return this.offlineActionStore.syncWhenOnline();
-    }
-
     async cleanupExpiredData(): Promise<void> {
         return this.offlineActionStore.cleanupExpiredData();
+    }
+
+    async completePendingAction(actionId: string): Promise<void> {
+        return this.offlineActionStore.completePendingAction(actionId);
+    }
+
+    async failPendingAction(actionId: string): Promise<void> {
+        return this.offlineActionStore.failPendingAction(actionId);
     }
 
     // ==========================================

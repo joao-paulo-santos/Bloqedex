@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { usePokemonStore } from '../stores/pokemonStore';
-import { useAppStore } from '../../../infrastructure/stores';
 import { PokemonCard } from './PokemonCard';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { EmptyPokemonState } from './EmptyPokemonState';
@@ -27,7 +26,7 @@ export const PokemonGrid: React.FC<PokemonGridProps> = ({
         clearError
     } = usePokemonStore();
 
-    const isOnline = useAppStore(state => state.isOnline);
+    const isOnline = usePokemonStore(state => state.isOnline);
 
     useEffect(() => {
         // Get filtered Pokemon array from store using custom filters

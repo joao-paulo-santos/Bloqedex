@@ -50,6 +50,14 @@ export class LocalPokemonDataSource extends BaseDataSource {
     async savePokemon(pokemon: Pokemon): Promise<void> {
         return await indexedDBStorage.savePokemon(pokemon);
     }
+
+    async getAllLocal(): Promise<Pokemon[]> {
+        return await indexedDBStorage.getAllPokemon();
+    }
+
+    async clearAllCaughtStatus(): Promise<void> {
+        return await indexedDBStorage.clearAllCaughtStatus();
+    }
 }
 
 // Export singleton instance

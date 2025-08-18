@@ -1,9 +1,7 @@
 export interface IOfflineStorage {
-    isOnline(): Promise<boolean>;
     savePendingAction(action: OfflineAction): Promise<void>;
-    getPendingActions(): Promise<OfflineAction[]>;
-    clearPendingActions(): Promise<void>;
-    syncWhenOnline(): Promise<void>;
+    getPendingActions(userId: number): Promise<OfflineAction[]>;
+    clearPendingActions(userId: number): Promise<void>;
 }
 
 export interface OfflineAction {

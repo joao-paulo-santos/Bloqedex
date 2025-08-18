@@ -5,15 +5,23 @@ import { indexedDBStorage } from '../../storage/IndexedDBStorage';
 // Data source for Offline Actions
 export class LocalOfflineActionsDataSource extends BaseDataSource {
 
-    async getPendingActions(): Promise<OfflineAction[]> {
-        return await indexedDBStorage.getPendingActions();
+    async getPendingActions(userId: number): Promise<OfflineAction[]> {
+        return await indexedDBStorage.getPendingActions(userId);
     }
 
-    async hasPokedexInterferingPendingActions(): Promise<boolean> {
-        const pendingActions = await this.getPendingActions();
+    async hasPokedexInterferingPendingActions(userId: number): Promise<boolean> {
+        const pendingActions = await this.getPendingActions(userId);
         return pendingActions.some(action =>
             ['catch', 'release', 'update', 'bulk_catch', 'bulk_release'].includes(action.type)
         );
+    }
+
+    async migratePendingActions(oldUserId: number, newUserId: number): Promise<void> {
+        const pendingActions = await indexedDBStorage.getPendingActions(oldUserId);
+        for (const action of pendingActions) {
+            await indexedDBStorage.savePendingAction({ ...action, userId: newUserId });
+        }
+        await indexedDBStorage.clearPendingActions(oldUserId);
     }
 
     async catchPokemon(userId: number, pokemonId: number, notes?: string): Promise<void> {
@@ -92,6 +100,35 @@ export class LocalOfflineActionsDataSource extends BaseDataSource {
         };
 
         await indexedDBStorage.savePendingAction(offlineAction);
+    }
+
+    async cleanupExpiredData(): Promise<void> {
+        await indexedDBStorage.cleanupExpiredData();
+    }
+
+    async deleteOfflineAction(actionId: string): Promise<void> {
+        await indexedDBStorage.deletePendingAction(actionId);
+    }
+
+    async saveOfflineAction(action: OfflineAction): Promise<void> {
+        await indexedDBStorage.savePendingAction(action);
+    }
+
+    async completeOfflineAction(actionId: string): Promise<void> {
+        await indexedDBStorage.completePendingAction(actionId);
+    }
+
+    async failOfflineAction(actionId: string): Promise<void> {
+        await indexedDBStorage.failPendingAction(actionId);
+    }
+
+    async failOfflineActionAndRetry(action: OfflineAction): Promise<void> {
+        await indexedDBStorage.failPendingAction(action.id);
+        await indexedDBStorage.savePendingAction({
+            ...action,
+            id: `${action.userId}_retry_${Date.now()}`,
+            status: 'pending'
+        });
     }
 }
 

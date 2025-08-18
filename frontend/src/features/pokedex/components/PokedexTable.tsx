@@ -97,19 +97,19 @@ export const PokedexTable: React.FC<PokedexTableProps> = ({
                                     onChange={(e) => {
                                         if (e.target.checked) {
                                             caughtPokemon.forEach(cp => {
-                                                if (!selectedPokemonIds.has(cp.id)) {
+                                                if (!selectedPokemonIds.has(cp.pokemon.pokeApiId)) {
                                                     onPokemonSelect(cp.pokemon.pokeApiId);
                                                 }
                                             });
                                         } else {
                                             caughtPokemon.forEach(cp => {
-                                                if (selectedPokemonIds.has(cp.id)) {
+                                                if (selectedPokemonIds.has(cp.pokemon.pokeApiId)) {
                                                     onPokemonSelect(cp.pokemon.pokeApiId);
                                                 }
                                             });
                                         }
                                     }}
-                                    checked={caughtPokemon.length > 0 && caughtPokemon.every(cp => selectedPokemonIds.has(cp.id))}
+                                    checked={caughtPokemon.length > 0 && caughtPokemon.every(cp => selectedPokemonIds.has(cp.pokemon.pokeApiId))}
                                 />
                             </th>
                             <SortableHeader column="pokeApiId">Pokemon</SortableHeader>
@@ -120,13 +120,13 @@ export const PokedexTable: React.FC<PokedexTableProps> = ({
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {caughtPokemon.map((cp, index) => {
-                            const isSelected = selectedPokemonIds.has(cp.id);
-                            const prevSelected = index > 0 && selectedPokemonIds.has(caughtPokemon[index - 1].id);
-                            const nextSelected = index < caughtPokemon.length - 1 && selectedPokemonIds.has(caughtPokemon[index + 1].id);
+                            const isSelected = selectedPokemonIds.has(cp.pokemon.pokeApiId);
+                            const prevSelected = index > 0 && selectedPokemonIds.has(caughtPokemon[index - 1].pokemon.pokeApiId);
+                            const nextSelected = index < caughtPokemon.length - 1 && selectedPokemonIds.has(caughtPokemon[index + 1].pokemon.pokeApiId);
 
                             return (
                                 <tr
-                                    key={cp.id}
+                                    key={cp.pokemon.pokeApiId}
                                     className={`hover:bg-gray-50 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : ''
                                         }`}
                                     onClick={() => onPokemonSelect(cp.pokemon.pokeApiId)}
@@ -141,7 +141,7 @@ export const PokedexTable: React.FC<PokedexTableProps> = ({
                                         <input
                                             type="checkbox"
                                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            checked={selectedPokemonIds.has(cp.id)}
+                                            checked={selectedPokemonIds.has(cp.pokemon.pokeApiId)}
                                             onChange={() => onPokemonSelect(cp.pokemon.pokeApiId)}
                                             onClick={(e) => e.stopPropagation()}
                                         />
@@ -198,7 +198,7 @@ export const PokedexTable: React.FC<PokedexTableProps> = ({
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    onToggleFavorite(cp.id);
+                                                    onToggleFavorite(cp.pokemon.pokeApiId);
                                                 }}
                                                 className={`p-2 rounded-md transition-colors cursor-pointer ${cp.isFavorite
                                                     ? 'text-red-500 hover:bg-red-50'
@@ -234,7 +234,7 @@ export const PokedexTable: React.FC<PokedexTableProps> = ({
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        onRelease(cp.id);
+                                                        onRelease(cp.pokemon.pokeApiId);
                                                     }}
                                                     className="p-2 rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
                                                     title="Release Pokemon"
@@ -267,7 +267,7 @@ export const PokedexTable: React.FC<PokedexTableProps> = ({
                 caughtPokemon={editingPokemon}
                 isOpen={!!editingPokemon}
                 onClose={() => setEditingPokemon(null)}
-                onRelease={editingPokemon ? () => onRelease?.(editingPokemon.id) : undefined}
+                onRelease={editingPokemon ? () => onRelease?.(editingPokemon.pokemon.pokeApiId) : undefined}
                 onUpdatePokemon={onUpdatePokemon}
             />
 

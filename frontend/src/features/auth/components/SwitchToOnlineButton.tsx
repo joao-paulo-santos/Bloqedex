@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { useAppStore } from '../../../infrastructure/stores';
 import { authEvents } from '../../../common/utils/eventBus';
 import { RefreshIcon } from '../../../components/common/Icons';
 
 export const SwitchToOnlineButton: React.FC = () => {
     const [isHovered, setIsHovered] = useState(false);
     const { isAuthenticated, isOfflineAccount } = useAuthStore();
-    const { isOnline } = useAppStore();
+    const { isOnline } = useAuthStore();
 
     const handleSwitchToOnline = () => {
         authEvents.openRegister();

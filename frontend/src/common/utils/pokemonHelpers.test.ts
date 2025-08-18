@@ -3,8 +3,7 @@ import { getLastConsecutiveId, getLastConsecutiveIdFromMap } from './pokemonHelp
 import type { Pokemon } from '../../core/types'
 
 // Helper function to create test Pokemon
-const createTestPokemon = (id: number, pokeApiId: number, name: string, height: number, weight: number, types: string[]): Pokemon => ({
-    id,
+const createTestPokemon = (pokeApiId: number, name: string, height: number, weight: number, types: string[]): Pokemon => ({
     pokeApiId,
     name,
     height,
@@ -31,9 +30,9 @@ describe('Pokemon Helpers', () => {
 
         it('should return the highest consecutive ID starting from 1', () => {
             const pokemon: Pokemon[] = [
-                createTestPokemon(1, 1, 'bulbasaur', 7, 69, ['grass']),
-                createTestPokemon(2, 2, 'ivysaur', 10, 130, ['grass']),
-                createTestPokemon(3, 3, 'venusaur', 20, 1000, ['grass'])
+                createTestPokemon(1, 'bulbasaur', 7, 69, ['grass']),
+                createTestPokemon(2, 'ivysaur', 10, 130, ['grass']),
+                createTestPokemon(3, 'venusaur', 20, 1000, ['grass'])
             ]
 
             const result = getLastConsecutiveId(pokemon)
@@ -42,9 +41,9 @@ describe('Pokemon Helpers', () => {
 
         it('should stop at first gap in sequence', () => {
             const pokemon: Pokemon[] = [
-                createTestPokemon(1, 1, 'bulbasaur', 7, 69, ['grass']),
-                createTestPokemon(2, 2, 'ivysaur', 10, 130, ['grass']),
-                createTestPokemon(5, 5, 'charmeleon', 11, 190, ['fire'])
+                createTestPokemon(1, 'bulbasaur', 7, 69, ['grass']),
+                createTestPokemon(2, 'ivysaur', 10, 130, ['grass']),
+                createTestPokemon(5, 'charmeleon', 11, 190, ['fire'])
             ]
 
             const result = getLastConsecutiveId(pokemon)
@@ -53,9 +52,9 @@ describe('Pokemon Helpers', () => {
 
         it('should handle non-sequential order in array', () => {
             const pokemon: Pokemon[] = [
-                createTestPokemon(3, 3, 'venusaur', 20, 1000, ['grass']),
-                createTestPokemon(1, 1, 'bulbasaur', 7, 69, ['grass']),
-                createTestPokemon(2, 2, 'ivysaur', 10, 130, ['grass'])
+                createTestPokemon(3, 'venusaur', 20, 1000, ['grass']),
+                createTestPokemon(1, 'bulbasaur', 7, 69, ['grass']),
+                createTestPokemon(2, 'ivysaur', 10, 130, ['grass'])
             ]
 
             const result = getLastConsecutiveId(pokemon)
@@ -64,8 +63,8 @@ describe('Pokemon Helpers', () => {
 
         it('should return 0 if sequence does not start from 1', () => {
             const pokemon: Pokemon[] = [
-                createTestPokemon(5, 5, 'charmeleon', 11, 190, ['fire']),
-                createTestPokemon(6, 6, 'charizard', 17, 905, ['fire'])
+                createTestPokemon(5, 'charmeleon', 11, 190, ['fire']),
+                createTestPokemon(6, 'charizard', 17, 905, ['fire'])
             ]
 
             const result = getLastConsecutiveId(pokemon)
@@ -82,9 +81,9 @@ describe('Pokemon Helpers', () => {
 
         it('should return the highest consecutive ID starting from 1', () => {
             const pokemonMap = new Map<number, Pokemon>()
-            pokemonMap.set(1, createTestPokemon(1, 1, 'bulbasaur', 7, 69, ['grass']))
-            pokemonMap.set(2, createTestPokemon(2, 2, 'ivysaur', 10, 130, ['grass']))
-            pokemonMap.set(3, createTestPokemon(3, 3, 'venusaur', 20, 1000, ['grass']))
+            pokemonMap.set(1, createTestPokemon(1, 'bulbasaur', 7, 69, ['grass']))
+            pokemonMap.set(2, createTestPokemon(2, 'ivysaur', 10, 130, ['grass']))
+            pokemonMap.set(3, createTestPokemon(3, 'venusaur', 20, 1000, ['grass']))
 
             const result = getLastConsecutiveIdFromMap(pokemonMap)
             expect(result).toBe(3)
@@ -92,9 +91,9 @@ describe('Pokemon Helpers', () => {
 
         it('should stop at first gap in sequence', () => {
             const pokemonMap = new Map<number, Pokemon>()
-            pokemonMap.set(1, createTestPokemon(1, 1, 'bulbasaur', 7, 69, ['grass']))
-            pokemonMap.set(2, createTestPokemon(2, 2, 'ivysaur', 10, 130, ['grass']))
-            pokemonMap.set(5, createTestPokemon(5, 5, 'charmeleon', 11, 190, ['fire']))
+            pokemonMap.set(1, createTestPokemon(1, 'bulbasaur', 7, 69, ['grass']))
+            pokemonMap.set(2, createTestPokemon(2, 'ivysaur', 10, 130, ['grass']))
+            pokemonMap.set(5, createTestPokemon(5, 'charmeleon', 11, 190, ['fire']))
 
             const result = getLastConsecutiveIdFromMap(pokemonMap)
             expect(result).toBe(2)
@@ -102,8 +101,8 @@ describe('Pokemon Helpers', () => {
 
         it('should return 0 if sequence does not start from 1', () => {
             const pokemonMap = new Map<number, Pokemon>()
-            pokemonMap.set(5, createTestPokemon(5, 5, 'charmeleon', 11, 190, ['fire']))
-            pokemonMap.set(6, createTestPokemon(6, 6, 'charizard', 17, 905, ['fire']))
+            pokemonMap.set(5, createTestPokemon(5, 'charmeleon', 11, 190, ['fire']))
+            pokemonMap.set(6, createTestPokemon(6, 'charizard', 17, 905, ['fire']))
 
             const result = getLastConsecutiveIdFromMap(pokemonMap)
             expect(result).toBe(0)
@@ -111,10 +110,10 @@ describe('Pokemon Helpers', () => {
 
         it('should handle large gaps correctly', () => {
             const pokemonMap = new Map<number, Pokemon>()
-            pokemonMap.set(1, createTestPokemon(1, 1, 'bulbasaur', 7, 69, ['grass']))
-            pokemonMap.set(2, createTestPokemon(2, 2, 'ivysaur', 10, 130, ['grass']))
-            pokemonMap.set(3, createTestPokemon(3, 3, 'venusaur', 20, 1000, ['grass']))
-            pokemonMap.set(150, createTestPokemon(150, 150, 'mewtwo', 20, 1220, ['psychic']))
+            pokemonMap.set(1, createTestPokemon(1, 'bulbasaur', 7, 69, ['grass']))
+            pokemonMap.set(2, createTestPokemon(2, 'ivysaur', 10, 130, ['grass']))
+            pokemonMap.set(3, createTestPokemon(3, 'venusaur', 20, 1000, ['grass']))
+            pokemonMap.set(150, createTestPokemon(150, 'mewtwo', 20, 1220, ['psychic']))
 
             const result = getLastConsecutiveIdFromMap(pokemonMap)
             expect(result).toBe(3)

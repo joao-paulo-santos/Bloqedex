@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { useAppStore } from '../../../infrastructure/stores';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { XIcon } from '../../../components/common/Icons';
 
@@ -19,7 +18,7 @@ export const RegisterDialog: React.FC<RegisterDialogProps> = ({ isOpen, onClose,
     const [error, setError] = useState('');
 
     const { register, registerOffline, convertOfflineToOnline, isOfflineAccount, user } = useAuthStore();
-    const { isOnline } = useAppStore();
+    const { isOnline } = useAuthStore();
 
     useEffect(() => {
         if (isOpen) {

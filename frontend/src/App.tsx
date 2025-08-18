@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { initializeStores, useAuthStore, useAppStore } from './infrastructure/stores';
+import { initializeStores, useAuthStore } from './infrastructure/stores';
 import { Layout } from './components/layout/Layout';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { ToastContainer } from './components/common/ToastContainer';
@@ -15,7 +15,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const isOnline = useAppStore(state => state.isOnline);
+  const isOnline = useAuthStore(state => state.isOnline);
 
   useEffect(() => {
     // Initialize stores and database

@@ -10,7 +10,7 @@ export class PokedexRepository implements IPokedexRepository {
         pageSize: number = 20
     ): Promise<PaginatedResponse<CaughtPokemon>> {
         if (isOnline && !isOfflineAccount()) {
-            const hasPendingPokedexActions = await localOfflineActionsDataSource.hasPokedexInterferingPendingActions();
+            const hasPendingPokedexActions = await localOfflineActionsDataSource.hasPokedexInterferingPendingActions(userId);
 
             if (!hasPendingPokedexActions) {
                 const response = await remotePokedexDataSource.getCaughtPokemon(pageIndex, pageSize);
@@ -133,6 +133,11 @@ export class PokedexRepository implements IPokedexRepository {
     async clearUserData(userId: number): Promise<boolean> {
         return await localPokedexDataSource.clearUserData(userId);
     }
+
+    async migrateUserData(oldUserId: number, newUserId: number): Promise<void> {
+        await localPokedexDataSource.migrateUserData(oldUserId, newUserId);
+    }
+
 }
 
 export const pokedexRepository = new PokedexRepository();

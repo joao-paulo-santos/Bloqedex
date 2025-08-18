@@ -34,6 +34,8 @@ src/
     └── utils/          # Utility functions & helpers
 ```
 
+![Ofline First Architecture](readme_assets/architecture.png)
+
 ### Key Architectural Patterns
 
 1. **Event-Driven Architecture** - Decoupled communication via EventBus system

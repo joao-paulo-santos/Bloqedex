@@ -12,10 +12,6 @@ export class LocalOfflineActionStore extends IndexedDBBase {
         }
     }
 
-    async isOnline(): Promise<boolean> {
-        return navigator.onLine;
-    }
-
     async savePendingAction(action: OfflineAction): Promise<void> {
         await this.ensureInitialized();
 
@@ -25,23 +21,29 @@ export class LocalOfflineActionStore extends IndexedDBBase {
         await this.promisifyVoidRequest(store.put(action));
     }
 
-    async getPendingActions(): Promise<OfflineAction[]> {
+    async getPendingActions(userId: number): Promise<OfflineAction[]> {
         await this.ensureInitialized();
 
         const transaction = this.createTransaction(['offlineActions'], 'readonly');
         const store = transaction.objectStore('offlineActions');
-        const index = store.index('status');
+        const index = store.index('userId');
 
-        return await this.promisifyRequest(index.getAll('pending'));
+        const allForUser: OfflineAction[] = await this.promisifyRequest(index.getAll(userId));
+        return allForUser.filter(action => action.status === 'pending');
     }
 
-    async clearPendingActions(): Promise<void> {
+    async clearPendingActions(userId: number): Promise<void> {
         await this.ensureInitialized();
 
         const transaction = this.createTransaction(['offlineActions'], 'readwrite');
         const store = transaction.objectStore('offlineActions');
+        const index = store.index('userId');
 
-        await this.promisifyVoidRequest(store.clear());
+        const allForUser: OfflineAction[] = await this.promisifyRequest(index.getAll(userId));
+        const deletePromises = allForUser
+            .filter(action => action.status === 'pending')
+            .map(action => this.promisifyVoidRequest(store.delete(action.id)));
+        await Promise.all(deletePromises);
     }
 
     async deletePendingAction(actionId: string): Promise<void> {
@@ -53,10 +55,30 @@ export class LocalOfflineActionStore extends IndexedDBBase {
         await this.promisifyVoidRequest(store.delete(actionId));
     }
 
-    async syncWhenOnline(): Promise<void> {
-        const isOnline = await this.isOnline();
-        if (!isOnline) return;
-        // Implementation would go here - sync pending actions
+    async completePendingAction(actionId: string): Promise<void> {
+        await this.ensureInitialized();
+
+        const transaction = this.createTransaction(['offlineActions'], 'readwrite');
+        const store = transaction.objectStore('offlineActions');
+
+        const action = await this.promisifyRequest(store.get(actionId));
+        if (action) {
+            action.status = 'completed';
+            await this.promisifyVoidRequest(store.put(action));
+        }
+    }
+
+    async failPendingAction(actionId: string): Promise<void> {
+        await this.ensureInitialized();
+
+        const transaction = this.createTransaction(['offlineActions'], 'readwrite');
+        const store = transaction.objectStore('offlineActions');
+
+        const action = await this.promisifyRequest(store.get(actionId));
+        if (action) {
+            action.status = 'failed';
+            await this.promisifyVoidRequest(store.put(action));
+        }
     }
 
     async cleanupExpiredData(): Promise<void> {

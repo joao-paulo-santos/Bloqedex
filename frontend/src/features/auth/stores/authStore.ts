@@ -1,16 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, CaughtPokemon } from '../../../core/types';
+import type { User } from '../../../core/types';
 import { authRepository } from '../../../infrastructure/repositories';
-import { indexedDBStorage } from '../../../infrastructure/storage/IndexedDBStorage';
+import { AuthService } from '../../../core/Services';
 import { toastEvents, eventBus } from '../../../common/utils/eventBus';
 import { extractErrorMessage } from '../../../common/utils/networkHelpers';
+import { syncManager } from '../../../infrastructure/datasources/SyncManager';
 
 interface AuthState {
+    isOnline: boolean;
     isAuthenticated: boolean;
     user: User | null;
     token: string | null;
     isOfflineAccount: boolean;
+    initialize: () => Promise<void>;
     login: (usernameOrEmail: string, password: string) => Promise<void>;
     register: (username: string, email: string, password: string) => Promise<void>;
     registerOffline: (username: string, email: string) => Promise<void>;
@@ -19,19 +22,29 @@ interface AuthState {
     logoutWithPendingCheck: () => Promise<boolean>; // Returns true if logout should proceed
     loadUser: () => Promise<void>;
     getPendingActionsCount: () => Promise<number>;
+    checkBackendHealth: () => Promise<boolean>;
+    syncOfflineActions: () => Promise<void>;
 }
+
+const authService = new AuthService(authRepository);
 
 export const useAuthStore = create<AuthState>()(
     persist(
         (set, get) => ({
+            isOnline: false,
             isAuthenticated: false,
             user: null,
             token: null,
             isOfflineAccount: false,
 
+            initialize: async () => {
+                set({ isOnline: false });
+            },
+
             login: async (usernameOrEmail: string, password: string) => {
                 try {
-                    const response = await authRepository.login({ usernameOrEmail, password });
+                    const response = await authService.login({ usernameOrEmail, password });
+                    // await authRepository.login({ usernameOrEmail, password });
                     set({
                         isAuthenticated: true,
                         user: response.user,
@@ -51,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
 
             register: async (username: string, email: string, password: string) => {
                 try {
-                    const response = await authRepository.register({ username, email, password });
+                    const response = await authService.register({ username, email, password });
 
                     set({
                         isAuthenticated: true,
@@ -78,7 +91,7 @@ export const useAuthStore = create<AuthState>()(
                 }
 
                 // Use -1 for offline user ID
-                const offlineUserId = -1;
+                const offlineUserId = -hashStringToNumber(username);
 
                 set({
                     isAuthenticated: true,
@@ -117,37 +130,13 @@ export const useAuthStore = create<AuthState>()(
 
                 try {
                     // Register a new online account
-                    const response = await authRepository.register({ username, email, password });
+                    const response = await authService.register({ username, email, password });
 
                     // Migrate Pokemon data from offline to online account
-                    try {
-                        // Get all Pokemon caught by the offline user (using -1 as offline user ID)
-                        const offlinePokemon = await indexedDBStorage.getCaughtPokemon(-1);
-
-                        // Migrate them to the new online user ID
-                        for (const pokemon of offlinePokemon) {
-                            const updatedPokemon: CaughtPokemon = {
-                                ...pokemon,
-                                userId: response.user.id
-                            };
-                            await indexedDBStorage.saveCaughtPokemon(updatedPokemon);
-                        }
-
-                    } catch (error) {
-                        console.error('Failed to migrate Pokemon data:', error);
-                        toastEvents.showWarning('Account converted successfully, but some Pokemon data may not have been migrated.');
-                        // Don't fail the entire conversion if migration fails
-                    }
-
-                    // Sync all pending actions to the online account
-                    try {
-                        const { syncManager } = await import('../../../infrastructure/datasources/DataSourceIndex');
-                        await syncManager.syncPendingActions(true); // Force sync during conversion
-                    } catch (error) {
-                        console.error('Failed to sync pending actions:', error);
-                        toastEvents.showWarning('Account converted successfully, but some actions may need to be manually synced.');
-                        // Don't fail the entire conversion if sync fails
-                    }
+                    eventBus.emit('auth:offlineToOnlineConversion', {
+                        oldUser: currentOfflineUser,
+                        newUser: response.user
+                    });
 
                     // Update auth state to online account
                     set({
@@ -180,12 +169,6 @@ export const useAuthStore = create<AuthState>()(
                     userId: user?.id
                 });
 
-                // Always clear pending actions on logout regardless of user type
-                // This prevents unrelated actions from being executed when a new user logs in
-                indexedDBStorage.clearPendingActions().catch(error => {
-                    console.error('Failed to clear pending actions from IndexedDB:', error);
-                });
-
                 set({
                     isAuthenticated: false,
                     user: null,
@@ -193,14 +176,14 @@ export const useAuthStore = create<AuthState>()(
                     isOfflineAccount: false,
                 });
             }, logoutWithPendingCheck: async () => {
-                const { isOfflineAccount } = get();
+                const { isOfflineAccount, user } = get();
 
                 if (isOfflineAccount) {
                     return false;
                 }
 
                 try {
-                    const pendingActions = await indexedDBStorage.getPendingActions();
+                    const pendingActions = await syncManager.getUserPendingActions(user!.id);
                     const hasPendingActions = pendingActions.length > 0;
 
                     if (hasPendingActions) {
@@ -236,8 +219,10 @@ export const useAuthStore = create<AuthState>()(
                     return;
                 }
 
+                const { isOnline } = get();
+
                 try {
-                    const user = await authRepository.getCurrentUser();
+                    const user = await authRepository.getCurrentUser(isOnline);
                     const token = localStorage.getItem('auth_token');
                     if (user && token) {
                         set({
@@ -262,12 +247,50 @@ export const useAuthStore = create<AuthState>()(
             },
 
             getPendingActionsCount: async () => {
+                const { user } = get();
+                if (!user) return 0;
                 try {
-                    const pendingActions = await indexedDBStorage.getPendingActions();
+                    const pendingActions = await syncManager.getUserPendingActions(user.id);
                     return pendingActions.length;
                 } catch (error) {
                     console.error('Failed to get pending actions count:', error);
                     return 0;
+                }
+            },
+
+            checkBackendHealth: async () => {
+                const oldStatus = get().isOnline;
+                try {
+                    const isHealthy = await authRepository.isOnline();
+                    set({ isOnline: isHealthy });
+                    if (oldStatus !== isHealthy) {
+                        if (isHealthy) {
+                            toastEvents.showSuccess('Connected');
+                            get().syncOfflineActions();
+                        } else {
+                            toastEvents.showWarning('Connection lost');
+                        }
+                        eventBus.emit('auth:connectivityChange', { isConnected: isHealthy });
+                    }
+                    return isHealthy;
+                } catch (error) {
+                    console.error('Failed to check backend health:', error);
+                    set({ isOnline: false });
+                    if (oldStatus !== false) {
+                        eventBus.emit('auth:connectivityChange', { isConnected: false });
+                        toastEvents.showWarning('Connection lost');
+                    }
+                    return false;
+                }
+            },
+            syncOfflineActions: async () => {
+                const { user, isOnline, isOfflineAccount } = get();
+                if (isOfflineAccount || !isOnline || !user) return;
+
+                try {
+                    await syncManager.syncPendingActions(user.id);
+                } catch (error) {
+                    console.error('Failed to sync offline actions:', error);
                 }
             },
         }),
@@ -276,3 +299,12 @@ export const useAuthStore = create<AuthState>()(
         }
     )
 );
+
+function hashStringToNumber(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+    }
+    return Math.abs(hash);
+}

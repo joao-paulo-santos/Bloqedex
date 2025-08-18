@@ -25,7 +25,7 @@ export class SharingRepository implements ISharingRepository {
 
     async getSharedPokemon(shareToken: string): Promise<SharedPokemon | null> {
         try {
-            return await sharingDataSource.getSharedPokedex(shareToken);
+            return await sharingDataSource.getSharedContent(shareToken);
         } catch (error) {
             console.error('Failed to get shared Pokemon:', error);
             return null;

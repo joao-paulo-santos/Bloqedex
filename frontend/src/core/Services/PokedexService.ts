@@ -57,4 +57,8 @@ export class PokedexService {
     async clearUserData(userId: number, isOnline: boolean): Promise<boolean> {
         return this.pokedexRepo.clearUserData(userId, isOnline);
     }
+
+    async migrateUserData(oldUserId: number, newUserId: number): Promise<void> {
+        await this.pokedexRepo.migrateUserData(oldUserId, newUserId);
+    }
 }

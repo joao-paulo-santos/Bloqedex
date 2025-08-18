@@ -72,7 +72,7 @@ export const PokedexPage: React.FC = () => {
         try {
             // Get the Pokemon IDs that will be released (we need their pokeApiIds for the Pokemon store)
             const pokemonToRelease = Array.from(selectedPokemonIds).map(id => {
-                const caughtPokemon = filteredPokemon.find(cp => cp.id === id);
+                const caughtPokemon = filteredPokemon.find(cp => cp.pokemon.pokeApiId === id);
                 return caughtPokemon;
             }).filter(Boolean);
 
@@ -95,7 +95,7 @@ export const PokedexPage: React.FC = () => {
 
     const handleSingleRelease = async (caughtPokemonId: number) => {
         try {
-            const caughtPokemon = filteredPokemon.find(cp => cp.id === caughtPokemonId);
+            const caughtPokemon = filteredPokemon.find(cp => cp.pokemon.pokeApiId === caughtPokemonId);
             if (!caughtPokemon) return;
 
             await releaseBulkPokemon([caughtPokemonId]);
@@ -117,7 +117,7 @@ export const PokedexPage: React.FC = () => {
     const handleExportCSV = () => {
         // Export selected Pokemon if any are selected, otherwise export all filtered Pokemon
         const pokemonToExport = selectedPokemonIds.size > 0
-            ? filteredPokemon.filter(p => selectedPokemonIds.has(p.id))
+            ? filteredPokemon.filter(p => selectedPokemonIds.has(p.pokemon.pokeApiId))
             : filteredPokemon;
 
         const headers = [
@@ -148,7 +148,6 @@ export const PokedexPage: React.FC = () => {
                 pokemon.specialAttack + pokemon.specialDefense + pokemon.speed;
 
             return [
-                caughtPokemon.id,
                 pokemon.name,
                 pokemon.pokeApiId,
                 pokemon.types.join(', '),
@@ -304,21 +303,21 @@ export const PokedexPage: React.FC = () => {
                 </div>
             ) : filteredPokemon.length === 0 ? (
                 <EmptyPokemonState
-                    title={caughtPokemon.length === 0
+                    title={caughtPokemon.size === 0
                         ? "You haven't caught any Pokémon yet!"
                         : "No Pokémon match your current filters."
                     }
-                    subtitle={caughtPokemon.length === 0
+                    subtitle={caughtPokemon.size === 0
                         ? "Start catching Pokémon to build your collection!"
                         : undefined
                     }
-                    showHint={caughtPokemon.length > 0}
+                    showHint={caughtPokemon.size > 0}
                 />
             ) : (
                 <div className="space-y-6">
                     {/* Results count */}
                     <div className="text-sm text-gray-600">
-                        Showing {filteredPokemon.length} of {caughtPokemon.length} caught Pokémon
+                        Showing {filteredPokemon.length} of {caughtPokemon.size} caught Pokémon
                     </div>
 
                     {/* Pokemon Grid/List */}
@@ -326,18 +325,18 @@ export const PokedexPage: React.FC = () => {
                         <div className="grid grid-cols-1 min-[480px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                             {filteredPokemon.map((caughtPokemon) => (
                                 <PokedexPokemonCard
-                                    key={caughtPokemon.id}
+                                    key={caughtPokemon.pokemon.pokeApiId}
                                     pokemon={caughtPokemon.pokemon}
                                     className="h-full"
-                                    onRelease={() => handleSingleRelease(caughtPokemon.id)}
-                                    isSelected={selectedPokemonIds.has(caughtPokemon.id)}
-                                    onSelect={() => handlePokemonSelect(caughtPokemon.id)}
+                                    onRelease={() => handleSingleRelease(caughtPokemon.pokemon.pokeApiId)}
+                                    isSelected={selectedPokemonIds.has(caughtPokemon.pokemon.pokeApiId)}
+                                    onSelect={() => handlePokemonSelect(caughtPokemon.pokemon.pokeApiId)}
                                     sortBy={filters.sortBy}
                                     caughtDate={caughtPokemon.caughtDate}
                                     notes={caughtPokemon.notes}
                                     isFavorite={caughtPokemon.isFavorite}
-                                    onToggleFavorite={() => toggleFavorite(caughtPokemon.id)}
-                                    onUpdatePokemon={(updates) => handleUpdatePokemon(caughtPokemon.id, updates)}
+                                    onToggleFavorite={() => toggleFavorite(caughtPokemon.pokemon.pokeApiId)}
+                                    onUpdatePokemon={(updates) => handleUpdatePokemon(caughtPokemon.pokemon.pokeApiId, updates)}
                                 />
                             ))}
                         </div>
@@ -349,7 +348,7 @@ export const PokedexPage: React.FC = () => {
                                 // Find the caught pokemon with this pokemon ID
                                 const caughtPokemon = filteredPokemon.find(cp => cp.pokemon.pokeApiId === pokemonId);
                                 if (caughtPokemon) {
-                                    handlePokemonSelect(caughtPokemon.id);
+                                    handlePokemonSelect(caughtPokemon.pokemon.pokeApiId);
                                 }
                             }}
                             onToggleFavorite={toggleFavorite}

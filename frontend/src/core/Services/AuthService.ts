@@ -1,4 +1,4 @@
-import type { User, IAuthRepository, LoginRequest, RegisterRequest } from '../types';
+import type { User, IAuthRepository, LoginRequest, RegisterRequest, AuthResponse } from '../types';
 
 export class AuthService {
     private authRepo: IAuthRepository;
@@ -7,7 +7,7 @@ export class AuthService {
         this.authRepo = authRepo;
     }
 
-    async login(credentials: LoginRequest): Promise<User> {
+    async login(credentials: LoginRequest): Promise<AuthResponse> {
         if (!credentials.usernameOrEmail.trim()) {
             throw new Error('Username or email is required');
         }
@@ -16,13 +16,13 @@ export class AuthService {
         }
 
         const response = await this.authRepo.login(credentials);
-        return response.user;
+        return response;
     }
 
-    async register(userData: RegisterRequest): Promise<User> {
+    async register(userData: RegisterRequest): Promise<AuthResponse> {
         this.validateRegistrationData(userData);
         const response = await this.authRepo.register(userData);
-        return response.user;
+        return response;
     }
 
     async getCurrentUser(isOnline: boolean): Promise<User | null> {

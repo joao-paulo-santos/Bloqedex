@@ -64,6 +64,13 @@ export class PokemonRepository implements IPokemonRepository {
     async saveManyPokemon(pokemon: Pokemon[]): Promise<void> {
         await localPokemonDataSource.saveManyPokemon(pokemon);
     }
-}
 
+    async getAllLocal(): Promise<Pokemon[]> {
+        return localPokemonDataSource.getAllLocal();
+    }
+
+    async clearAllCaughtStatus(): Promise<void> {
+        await localPokemonDataSource.clearAllCaughtStatus();
+    }
+}
 export const pokemonRepository = new PokemonRepository();

@@ -114,6 +114,14 @@ export class LocalPokedexDataSource extends BaseDataSource {
     async saveManyCaughtPokemon(caughtPokemon: CaughtPokemon[]): Promise<void> {
         await indexedDBStorage.saveManyCaughtPokemon(caughtPokemon);
     }
+
+    async migrateUserData(oldUserId: number, newUserId: number): Promise<void> {
+        const caughtList = await indexedDBStorage.getCaughtPokemon(oldUserId);
+        for (const caught of caughtList) {
+            await indexedDBStorage.saveCaughtPokemon({ ...caught, userId: newUserId });
+            await indexedDBStorage.deleteCaughtPokemon(oldUserId, caught.pokemon.pokeApiId);
+        }
+    }
 }
 
 // Export singleton instance

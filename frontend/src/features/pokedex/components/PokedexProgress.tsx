@@ -8,15 +8,15 @@ interface PokedexProgressProps {
 
 export const PokedexProgress: React.FC<PokedexProgressProps> = () => {
     const { totalPokemons } = usePokemonStore();
-    const { caughtPokemon } = usePokedexStore();
+    const { caughtPokemon, favorites } = usePokedexStore();
 
 
     if (!totalPokemons) {
         return null;
     }
 
-    const totalCaught = caughtPokemon.length;
-    const totalFavorites = caughtPokemon.filter(p => p.isFavorite).length;
+    const totalCaught = caughtPokemon.size;
+    const totalFavorites = favorites.size;
     const totalAvailable = totalPokemons;
     const remaining = totalAvailable - totalCaught;
     const progressPercentage = Math.round((totalCaught / totalAvailable) * 100);

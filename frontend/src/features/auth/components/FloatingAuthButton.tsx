@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useAppStore } from '../../../infrastructure/stores';
+import { useAuthStore } from '../../../infrastructure/stores';
 import { authEvents } from '../../../common/utils/eventBus';
 
 export const FloatingAuthButton: React.FC = () => {
     const [showOptions, setShowOptions] = useState(false);
-    const { isOnline } = useAppStore();
+    const { isOnline } = useAuthStore();
 
     const handleLoginClick = () => {
         setShowOptions(false);
