@@ -6,12 +6,7 @@ export class LocalPokemonStore extends IndexedDBBase {
     private pokeApiIdsCache: Set<number> | null = null;
 
     protected createStores(db: IDBDatabase): void {
-        // Pokemon store
-        if (!db.objectStoreNames.contains('pokemon')) {
-            const pokemonStore = db.createObjectStore('pokemon', { keyPath: 'pokeApiId' });
-            pokemonStore.createIndex('name', 'name', { unique: false });
-            pokemonStore.createIndex('isCaught', 'isCaught', { unique: false });
-        }
+        this.createAllStores(db);
     }
 
     async savePokemon(pokemon: Pokemon): Promise<void> {
@@ -174,17 +169,16 @@ export class LocalPokemonStore extends IndexedDBBase {
         const transaction = this.createTransaction(['pokemon'], 'readwrite');
         const store = transaction.objectStore('pokemon');
 
-        const index = store.index('isCaught');
-        const request = index.openCursor();
+        const allPokemon = await this.promisifyRequest(store.getAll());
 
-        request.onsuccess = (event) => {
-            const cursor = (event.target as IDBRequest).result;
-            if (cursor) {
-                const updatedPokemon = { ...cursor.value, isCaught: false };
-                store.put(updatedPokemon);
-                cursor.continue();
-            }
-        };
+        const updatePromises = allPokemon
+            .filter(pokemon => pokemon.isCaught)
+            .map(pokemon => {
+                const updatedPokemon = { ...pokemon, isCaught: false };
+                return this.promisifyVoidRequest(store.put(updatedPokemon));
+            });
+
+        await Promise.all(updatePromises);
     }
 
     clearCache(): void {

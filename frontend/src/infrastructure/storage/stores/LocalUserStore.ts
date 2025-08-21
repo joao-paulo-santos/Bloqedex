@@ -3,10 +3,7 @@ import { IndexedDBBase } from '../core/IndexedDBBase';
 
 export class LocalUserStore extends IndexedDBBase {
     protected createStores(db: IDBDatabase): void {
-        // Users store
-        if (!db.objectStoreNames.contains('users')) {
-            db.createObjectStore('users', { keyPath: 'id' });
-        }
+        this.createAllStores(db);
     }
 
     async saveUser(user: User): Promise<void> {

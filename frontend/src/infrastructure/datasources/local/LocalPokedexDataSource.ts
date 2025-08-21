@@ -42,6 +42,7 @@ export class LocalPokedexDataSource extends BaseDataSource {
     }
 
     async catchBulkPokemon(userId: number, pokemonIds: number[], notes?: string): Promise<CaughtPokemon[]> {
+        console.log('LOCAL CACHE Catching bulk Pokemon:', pokemonIds, 'for user:', userId);
         const caughtPokemon: CaughtPokemon[] = [];
 
         for (const pokemonId of pokemonIds) {

@@ -61,8 +61,6 @@ function burstPokemonCacheFill(chain: boolean) {
   const pokemonStore = usePokemonStore.getState();
   const authStore = useAuthStore.getState();
 
-  console.log('Burst filling Pokemon cache...');
-  console.log(`online: ${authStore.isOnline}, loading: ${pokemonStore.isLoading}, hasAll: ${pokemonStore.hasAllPokemon()}`);
   if (authStore.isOnline && !pokemonStore.isLoading && !pokemonStore.hasAllPokemon()) {
     pokemonStore.fillCache().then(() => burstPokemonCacheFill(true));
   } else {

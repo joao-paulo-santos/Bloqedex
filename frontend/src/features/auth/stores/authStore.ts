@@ -146,12 +146,6 @@ export const useAuthStore = create<AuthState>()(
                         isOfflineAccount: false,
                     });
 
-                    // Emit login event for other features to handle
-                    eventBus.emit('auth:login', {
-                        userId: response.user.id,
-                        user: response.user
-                    });
-
                     toastEvents.showSuccess('Account successfully converted to online! Your progress has been preserved.');
                 } catch (error) {
                     throw new Error(extractErrorMessage(error));

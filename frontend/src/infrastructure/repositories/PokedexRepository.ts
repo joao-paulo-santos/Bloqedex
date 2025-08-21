@@ -56,13 +56,16 @@ export class PokedexRepository implements IPokedexRepository {
     }
 
     async catchBulkPokemon(userId: number, pokeApiId: number[], isOnline: boolean, notes?: string): Promise<CaughtPokemon[]> {
+        console.log('Catching bulk Pokemon:', pokeApiId, 'for user:', userId, 'Online:', isOnline);
         if (isOnline && !isOfflineAccount()) {
+            console.log('Catching bulk Pokemon online:', pokeApiId, 'for user:', userId);
             const response = await remotePokedexDataSource.catchBulkPokemon(pokeApiId, notes);
             if (response) {
                 await localPokedexDataSource.catchBulkPokemon(userId, pokeApiId, notes);
                 return response;
             }
         }
+        console.log('Catching bulk Pokemon offline:', pokeApiId, 'for user:', userId);
 
         await localOfflineActionsDataSource.catchBulkPokemon(userId, pokeApiId, notes);
         return await localPokedexDataSource.catchBulkPokemon(userId, pokeApiId, notes);

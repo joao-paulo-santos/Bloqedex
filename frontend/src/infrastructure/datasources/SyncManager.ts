@@ -61,9 +61,9 @@ export class SyncManager extends BaseDataSource {
                         break;
                     }
                     case 'update': {
-                        const payload = action.payload as { pokemonApiId: number; notes?: string; isFavorite?: boolean };
+                        const payload = action.payload as { pokeApiId: number; notes?: string; isFavorite?: boolean };
 
-                        const response = await remotePokedexDataSource.updateCaughtPokemon(payload.pokemonApiId, { notes: payload.notes, isFavorite: payload.isFavorite });
+                        const response = await remotePokedexDataSource.updateCaughtPokemon(payload.pokeApiId, { notes: payload.notes, isFavorite: payload.isFavorite });
                         if (response) {
                             success = true;
                         }

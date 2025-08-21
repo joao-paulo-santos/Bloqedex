@@ -17,14 +17,7 @@ export class LocalCaughtPokemonStore extends IndexedDBBase {
         };
     }
     protected createStores(db: IDBDatabase): void {
-        // Caught Pokemon store
-        if (!db.objectStoreNames.contains('caughtPokemon')) {
-            const caughtStore = db.createObjectStore('caughtPokemon', { keyPath: ['userId', 'pokemon.pokeApiId'] });
-            caughtStore.createIndex('pokemonId', 'pokemon.id', { unique: false });
-            caughtStore.createIndex('caughtDate', 'caughtDate', { unique: false });
-            caughtStore.createIndex('userId', 'userId', { unique: false });
-            caughtStore.createIndex('userId_isFavorite', ['userId', 'isFavorite'], { unique: false });
-        }
+        this.createAllStores(db);
     }
 
     async getCaughtCount(userId: number): Promise<number> {
@@ -185,10 +178,10 @@ export class LocalCaughtPokemonStore extends IndexedDBBase {
         const index = store.index('userId');
         const pokemonToDelete = await this.promisifyRequest(index.getAll(userId));
 
-
         // Delete all caught Pokemon for this specific user
+        // Since we're using a compound key ['userId', 'pokemon.pokeApiId'], we need to construct the proper key
         const deletePromises = pokemonToDelete.map(pokemon =>
-            this.promisifyVoidRequest(store.delete(pokemon.id))
+            this.promisifyVoidRequest(store.delete([pokemon.userId, pokemon.pokemon.pokeApiId]))
         );
 
         await Promise.all(deletePromises);

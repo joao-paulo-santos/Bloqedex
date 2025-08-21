@@ -3,13 +3,7 @@ import { IndexedDBBase } from '../core/IndexedDBBase';
 
 export class LocalOfflineActionStore extends IndexedDBBase {
     protected createStores(db: IDBDatabase): void {
-        // Offline actions store
-        if (!db.objectStoreNames.contains('offlineActions')) {
-            const actionsStore = db.createObjectStore('offlineActions', { keyPath: 'id' });
-            actionsStore.createIndex('timestamp', 'timestamp', { unique: false });
-            actionsStore.createIndex('userId', 'userId', { unique: false });
-            actionsStore.createIndex('status', 'status', { unique: false });
-        }
+        this.createAllStores(db);
     }
 
     async savePendingAction(action: OfflineAction): Promise<void> {

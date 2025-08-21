@@ -40,23 +40,28 @@ export class LocalOfflineActionsDataSource extends BaseDataSource {
     }
 
     async catchBulkPokemon(userId: number, pokemonIds: number[], notes?: string): Promise<void> {
-        const payload = {
-            pokemonToCatch: pokemonIds.map(pokeApiId => ({
-                pokemonId: pokeApiId,
-                notes: notes || ""
-            }))
-        };
+        console.log('Catching bulk Pokemon OFFLINE ACTION:', pokemonIds, 'for user:', userId);
+        try {
+            const payload = {
+                pokemonToCatch: pokemonIds.map(pokeApiId => ({
+                    pokemonId: pokeApiId,
+                    notes: notes || ""
+                }))
+            };
 
-        const offlineAction: OfflineAction = {
-            id: `${userId}_catch_bulk_${Date.now()}`,
-            userId,
-            type: 'bulk_catch',
-            payload,
-            timestamp: Date.now(),
-            status: 'pending'
-        };
+            const offlineAction: OfflineAction = {
+                id: `${userId}_catch_bulk_${Date.now()}`,
+                userId,
+                type: 'bulk_catch',
+                payload,
+                timestamp: Date.now(),
+                status: 'pending'
+            };
 
-        await indexedDBStorage.savePendingAction(offlineAction);
+            await indexedDBStorage.savePendingAction(offlineAction);
+        } catch (err) {
+            console.error('Error catching bulk Pokemon OFFLINE ACTION:', err);
+        }
     }
 
     async releasePokemon(userId: number, pokeApiId: number): Promise<void> {

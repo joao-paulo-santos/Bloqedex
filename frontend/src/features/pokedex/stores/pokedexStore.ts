@@ -43,14 +43,17 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
 
     fetchCaughtPokemon: async () => {
         set({ isLoading: true, error: null });
+        console.log('Store: Fetching caught Pokemon...');
 
         try {
             const { currentUserId, isOnline } = get();
             if (!currentUserId) {
                 throw new Error('User not authenticated');
             }
+            console.log('Store: Fetching caught Pokemon for user:', currentUserId, 'Online:', isOnline);
 
             const result = await pokedexService.getCaughtPokemon(currentUserId, isOnline);
+            console.log('Store: Caught Pokemon fetched:', result.pokemon);
             set({
                 caughtPokemon: new Map(result.pokemon.map(p => [p.pokemon.pokeApiId, p])),
                 isLoading: false
@@ -116,7 +119,6 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
             if (!currentUserId) {
                 throw new Error('User not authenticated');
             }
-
             const caughtPokemon = await pokedexService.catchPokemon(currentUserId, pokemonId, isOnline, notes);
 
             if (caughtPokemon) {
@@ -330,13 +332,13 @@ export const usePokedexStore = create<PokedexState>((set, get) => ({
         set({ error: null });
     },
 
-    setUserId: (userId: number | null) => {
+    setUserId: async (userId: number | null) => {
         set({ currentUserId: userId });
 
         // Automatically fetch caught Pokemon when userId is set
         if (userId) {
-            get().fetchCaughtPokemon();
-            get().fetchStats();
+            await get().fetchCaughtPokemon();
+            await get().fetchStats();
         }
     },
 
@@ -355,8 +357,9 @@ eventBus.on('auth:login', (data) => {
     usePokedexStore.getState().setUserId(data.userId);
 });
 
-eventBus.on('auth:offlineToOnlineConversion', (data) => {
-    usePokedexStore.getState().migrateUser(data.oldUser, data.newUser);
+eventBus.on('auth:offlineToOnlineConversion', async (data) => {
+    await usePokedexStore.getState().migrateUser(data.oldUser, data.newUser);
+    usePokedexStore.getState().setUserId(data.newUser.id);
 });
 
 eventBus.on('auth:logout', async (data) => {

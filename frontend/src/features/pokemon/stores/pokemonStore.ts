@@ -305,6 +305,15 @@ export const usePokemonStore = create<PokemonState>((set, get) => ({
 
     clearAllCaughtStatus: async () => {
         await pokemonService.clearAllCaughtStatus();
+
+        const { pokemonMap } = get();
+        const updatedMap = new Map<number, Pokemon>();
+
+        pokemonMap.forEach((pokemon, key) => {
+            updatedMap.set(key, { ...pokemon, isCaught: false });
+        });
+
+        set({ pokemonMap: updatedMap });
     },
 
     clearError: () => {
@@ -346,10 +355,10 @@ eventBus.on('auth:connectivityChange', (data: { isConnected: boolean }) => {
     console.log(`Connectivity changed: ${data.isConnected}`);
 });
 
-eventBus.on('pokemon:refresh-caught-status', (data: { caughtPokemon: Array<{ pokemon: { pokeApiId: number } }> }) => {
+eventBus.on('pokemon:refresh-caught-status', async (data: { caughtPokemon: Array<{ pokemon: { pokeApiId: number } }> }) => {
     const pokemonStore = usePokemonStore.getState();
     // First clear all caught status
-    pokemonStore.clearAllCaughtStatus();
+    await pokemonStore.clearAllCaughtStatus();
     // Then set caught status for all provided pokemon
     data.caughtPokemon.forEach(caught => {
         pokemonStore.updatePokemonCaughtStatus(caught.pokemon.pokeApiId, true);
